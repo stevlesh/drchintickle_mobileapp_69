@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Dr. ChinTickle",
+    "slug": "dr-chintickle-v2",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/icons/sessions.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./src/assets/icons/sessions.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.drchintickle.app",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": ["drchintickle"]
+          }
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/icons/sessions.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.drchintickle.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [{
+            "scheme": "drchintickle",
+            "host": "auth",
+            "pathPrefix": "/callback"
+          }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./src/assets/icons/sessions.png",
+      "bundler": "metro"
+    },
+    "runtimeVersion": "1.0.0",
+    "owner": "stevlesh",
+    "extra": {
+      "eas": {
+        "projectId": "c872a76c-b7c9-47cc-8b5e-b7a44933a57b"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c872a76c-b7c9-47cc-8b5e-b7a44933a57b"
+    }
+  }
+}
