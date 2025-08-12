@@ -80,11 +80,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Pacifico_400Regular',
     color: colors.white,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 2,
     // Basic styling
     letterSpacing: 2,
     fontStyle: 'italic',
-    transform: [{ rotate: '-2deg' }],
+    // Removed rotation for better continuity with page layout
   },
   // Mobile-specific title styles with enhanced glow
   titleMobile: {
@@ -103,23 +103,20 @@ const styles = StyleSheet.create({
     filter: `drop-shadow(0 0 10px ${colors.electricCyan}) drop-shadow(0 0 20px ${colors.electricCyan})`,
   },
   subtitle: {
-    fontFamily: 'Orbitron_400Regular',
-    color: colors.lightBlue,
+    fontFamily: 'IBMPlexMono_700Bold',
+    color: colors.white,
     textAlign: 'center',
-    letterSpacing: 1.5,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
-    marginTop: 4,
-    opacity: 0.9,
+    marginTop: 0,
   },
   // Mobile-specific subtitle styles
   subtitleMobile: {
-    textShadowColor: colors.lightBlue,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 12,
+    // No glow for cleaner look
   },
   // Web-specific subtitle styles - ORIGINAL
   subtitleWeb: {
-    filter: `drop-shadow(0 0 5px ${colors.lightBlue})`,
+    // No glow for cleaner look
   },
 });
 

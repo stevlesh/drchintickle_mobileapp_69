@@ -12,6 +12,7 @@ import StatCard from '../components/StatCard';
 import NeonIcon from '../components/NeonIcon';
 import { colors, textStyles } from '../theme/typography';
 import { supabase } from '../lib/supabase';
+import { CalendarBlank, LadderSimple, Target } from 'phosphor-react-native';
 import { getQuote, getDashboardQuote } from '../utils/quotes';
 import { generateWorkout } from '../utils/workoutApi';
 
@@ -194,14 +195,14 @@ const DashboardScreen = ({ navigation }) => {
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <StatCard
-            icon={require('../assets/icons/sessions3.png')}
+            icon="trophy"
             count={userStats.totalSessions}
             label="SESSIONS"
             borderColor={colors.gold}
             glowColor={colors.gold}
           />
           <StatCard
-            icon={require('../assets/icons/streak2.png')}
+            icon="rainbow"
             count={userStats.currentStreak}
             label="STREAK"
             borderColor={colors.orange}
@@ -209,23 +210,46 @@ const DashboardScreen = ({ navigation }) => {
           />
         </View>
 
-        {/* Next Workout Card */}
-        <GlassCard 
-          style={styles.workoutCard}
-          borderColor={colors.electricCyan}
-          glowColor={colors.electricCyan}
-        >
-          <Text style={styles.workoutHeader}>NEXT WORKOUT ({userStats.nextWorkout.workoutNum}/8)</Text>
-          {/* Workout type with text shadow glow instead of background */}
-          <Text style={styles.workoutType}>
-            {isMaxTestDay ? 'MAX TEST DAY' : userStats.nextWorkout.patternName || 'Volume Workout'}
-          </Text>
-          {!isMaxTestDay && (
-            <Text style={styles.workoutTarget}>
-              TARGET: {userStats.nextWorkout.totalReps || 0} REPS
-            </Text>
-          )}
-        </GlassCard>
+        {/* Next Workout Panel - Horizontal Rows */}
+        <View style={[styles.panelShadow, { shadowColor: colors.electricCyan }]}>
+          <LinearGradient
+            colors={['#1d1440', '#301058']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.panel, { borderColor: colors.electricCyan }]}
+          >
+            {/* Next Workout Row */}
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <CalendarBlank size={18} color={colors.electricCyan} weight="regular" />
+                <Text style={styles.rowLabel}>NEXT WORKOUT</Text>
+              </View>
+              <Text style={styles.rowValue}>{userStats.nextWorkout.workoutNum} / 8</Text>
+            </View>
+
+            {/* Workout Type Row */}
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <LadderSimple size={18} color={colors.electricCyan} weight="regular" />
+                <Text style={styles.rowLabel}>WORKOUT TYPE</Text>
+              </View>
+              <Text style={styles.rowValue}>
+                {isMaxTestDay ? 'MAX TEST' : userStats.nextWorkout.patternName || 'VOLUME'}
+              </Text>
+            </View>
+
+            {/* Target Reps Row */}
+            <View style={[styles.row, { marginBottom: 0 }]}>
+              <View style={styles.rowLeft}>
+                <Target size={18} color={colors.electricCyan} weight="regular" />
+                <Text style={styles.rowLabel}>TARGET REPS</Text>
+              </View>
+              <Text style={styles.rowValue}>
+                {isMaxTestDay ? 'MAX' : (userStats.nextWorkout.totalReps || 0)}
+              </Text>
+            </View>
+          </LinearGradient>
+        </View>
 
         {/* CTA Button */}
         <NeonButton 
@@ -254,7 +278,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -262,31 +286,48 @@ const styles = StyleSheet.create({
     marginVertical: 24,
     paddingHorizontal: 4, // Reduced from 8px
   },
-  workoutCard: {
-    alignItems: 'center',
+  panelShadow: {
     marginVertical: 24,
     marginHorizontal: 8,
+    borderRadius: 16,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
   },
-  workoutHeader: {
-    ...textStyles.infoLabel,
-    marginBottom: 8,
-    color: colors.lightGray,
+  panel: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 16,
   },
-  workoutType: {
-    fontSize: 22,
-    fontFamily: 'Orbitron_700Bold',
-    color: colors.brightPink,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     marginBottom: 8,
-    textAlign: 'center',
+  },
+  rowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rowLabel: {
+    fontFamily: 'IBMPlexMono_400Regular',
+    fontSize: 12,
+    color: '#FFFFFF',
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    // Bright pink glow that follows text contours
-    textShadowColor: colors.brightPink,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 15,
   },
-  workoutTarget: {
-    ...textStyles.accentLabel,
+  rowValue: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 18,
+    color: colors.electricCyan,
+    textAlign: 'right',
+    flexShrink: 1,
+    maxWidth: '60%',
   },
   ctaButton: {
     marginVertical: 24,
@@ -316,10 +357,12 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     ...textStyles.smallText,
+    fontFamily: 'IBMPlexMono_400Regular',
     color: colors.mediumGray,
   },
   quoteTextDirect: {
     ...textStyles.quote,
+    fontFamily: 'IBMPlexMono_400Regular',
     textAlign: 'center',
     marginTop: 32,
     marginBottom: 8,

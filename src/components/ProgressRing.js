@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Stop, G } from 'react-native-svg';
 import { colors, textStyles } from '../theme/typography';
 
 const ProgressRing = ({ currentMax, targetMax = 69 }) => {
@@ -11,77 +11,96 @@ const ProgressRing = ({ currentMax, targetMax = 69 }) => {
   // Debug logging
   console.log('ProgressRing props:', { currentMax, targetMax, current, target });
   
-  const size = 192; // 12rem = 192px
-  const strokeWidth = 12;
-  const radius = (size - strokeWidth) / 2;
+  // Adjusted sizing to prevent clipping
+  const size = 240; // Increased to accommodate glow
+  const strokeWidth = 14;
+  const glowWidth = 10; // Extra width for glow
+  const padding = glowWidth + 5; // Extra padding to prevent clipping
+  
+  // Calculate radius accounting for stroke and glow
+  const radius = (size - (strokeWidth + glowWidth + padding) * 2) / 2;
+  const center = size / 2;
+  
   const circumference = radius * 2 * Math.PI;
   const progress = Math.min(current / target, 1);
-  const strokeDasharray = `${progress * circumference} ${circumference}`;
   const strokeDashoffset = circumference * (1 - progress);
   
-  console.log('ProgressRing calculated:', { progress, strokeDasharray, strokeDashoffset });
+  console.log('ProgressRing calculated:', { progress, radius, center, circumference });
 
   // Determine what to display in the center of the ring
   const displayValue = current === 0 ? "TBD" : current;
 
   return (
     <View style={styles.container}>
-      <Svg width={size} height={size} style={styles.svg}>
-        <Defs>
-          <LinearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor={colors.hotPink} />
-            <Stop offset="50%" stopColor={colors.brightPink} />
-            <Stop offset="100%" stopColor={colors.purple} />
-          </LinearGradient>
-        </Defs>
+      <View style={[styles.svgContainer, { width: size, height: size }]}>
+        <Svg 
+          width={size} 
+          height={size} 
+          viewBox={`0 0 ${size} ${size}`}
+          style={styles.svg}
+        >
+          <Defs>
+            <LinearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#FF0AA6" />
+              <Stop offset="100%" stopColor="#FF74FF" />
+            </LinearGradient>
+          </Defs>
+          
+          <G>
+            {/* Outer Glow Circle - with proper centering */}
+            <Circle
+              cx={center}
+              cy={center}
+              r={radius}
+              stroke="#FF44C8"
+              strokeOpacity={0.35}
+              strokeWidth={strokeWidth + glowWidth}
+              fill="none"
+            />
+            
+            {/* Background Track Circle */}
+            <Circle
+              cx={center}
+              cy={center}
+              r={radius}
+              stroke="rgba(255, 255, 255, 0.12)"
+              strokeWidth={strokeWidth}
+              fill="none"
+            />
+            
+            {/* Progress Circle - with proper rotation */}
+            <Circle
+              cx={center}
+              cy={center}
+              r={radius}
+              stroke="url(#progressGradient)"
+              strokeWidth={strokeWidth}
+              fill="none"
+              strokeDasharray={`${circumference}`}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              transform={`rotate(-90 ${center} ${center})`}
+            />
+          </G>
+        </Svg>
         
-        {/* Background Circle */}
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={`${colors.white}20`} // 20% opacity
-          strokeWidth={strokeWidth}
-          fill="transparent"
-        />
-        
-        {/* Progress Circle */}
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="url(#progressGradient)"
-          strokeWidth={strokeWidth}
-          fill="transparent"
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          // Enhanced glow effect for mobile compatibility
-          style={{
-            filter: 'drop-shadow(0 0 8px rgba(255, 105, 180, 0.8))',
-            shadowColor: '#ff69b4',
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.8,
-            shadowRadius: 12,
-          }}
-        />
-      </Svg>
-      
-      {/* Center Content - Properly positioned */}
-      <View style={styles.centerContent}>
-        <Text style={[
-          styles.currentMaxText,
-          displayValue === "TBD" && styles.tbdText
-        ]}>
-          {displayValue}
-        </Text>
-        <Text style={styles.targetText}>/ {target} REPS</Text>
+        {/* Center Content - Properly positioned */}
+        <View style={[styles.centerContent, { width: size, height: size }]}>
+          <Text style={[
+            styles.currentMaxText,
+            displayValue === "TBD" && styles.tbdText
+          ]}>
+            {displayValue}
+          </Text>
+          <Text style={styles.targetText}>/ {target} REPS</Text>
+        </View>
       </View>
       
-      <Text style={styles.progressText}>
-        {current === 0 ? "COMPLETE MAX TEST TO START" : `${(progress * 100).toFixed(1)}% TO LEGEND STATUS`}
-      </Text>
+      {current === 0 && (
+        <Text style={styles.progressText}>
+          COMPLETE MAX TEST TO START
+        </Text>
+      )}
     </View>
   );
 };
@@ -89,45 +108,47 @@ const ProgressRing = ({ currentMax, targetMax = 69 }) => {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingTop: 20,
+    paddingBottom: 32,
+  },
+  svgContainer: {
     position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   svg: {
-    // No additional styling needed
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
   centerContent: {
     position: 'absolute',
-    top: 32, // Account for container padding
+    top: 0,
     left: 0,
-    right: 0,
-    height: 192, // Same as SVG size
     alignItems: 'center',
     justifyContent: 'center',
   },
   currentMaxText: {
-    ...textStyles.heroNumber,
-    fontSize: 48,
-    lineHeight: 56,
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 44,
+    lineHeight: 52,
     color: colors.white,
-    textShadowColor: colors.hotPink,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 25,
     textAlign: 'center',
   },
   tbdText: {
-    fontSize: 36, // Slightly smaller for "TBD"
-    color: colors.electricCyan, // Different color to indicate it's not a number
+    fontSize: 36,
+    color: colors.electricCyan,
   },
   targetText: {
-    ...textStyles.infoLabel,
+    fontFamily: 'IBMPlexMono_400Regular',
     fontSize: 14,
     lineHeight: 16,
-    color: colors.mediumGray,
-    marginTop: 0,
+    color: '#B7BACC',
+    marginTop: 4,
     textAlign: 'center',
   },
   progressText: {
-    ...textStyles.infoLabel,
+    fontFamily: 'IBMPlexMono_400Regular',
     marginTop: 16,
     color: colors.lightGray,
     textAlign: 'center',
