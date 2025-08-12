@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   },
   rowValue: {
     fontFamily: 'IBMPlexMono_700Bold',
-    fontSize: 18,
+    fontSize: 16,
     color: colors.electricCyan,
     textAlign: 'right',
     flexShrink: 1,

@@ -7,20 +7,20 @@ import { useFonts, Pacifico_400Regular } from '@expo-google-fonts/pacifico'
 import { Righteous_400Regular } from '@expo-google-fonts/righteous'
 import { Orbitron_400Regular, Orbitron_700Bold, Orbitron_900Black } from '@expo-google-fonts/orbitron'
 import { Monoton_400Regular } from '@expo-google-fonts/monoton'
+import { GemunuLibre_700Bold } from '@expo-google-fonts/gemunu-libre'
+import { IBMPlexMono_400Regular, IBMPlexMono_700Bold } from '@expo-google-fonts/ibm-plex-mono'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Asset } from 'expo-asset'
 import { supabase } from './src/lib/supabase'
 import { colors } from './src/theme/typography'
 
-// Import screens (we'll create these next)
+// Import screens
 import LoginScreen from './src/screens/LoginScreen'
-import DashboardScreen from './src/screens/DashboardScreen'
-import WorkoutScreen from './src/screens/WorkoutScreen'
-import PreWorkoutScreen from './src/screens/PreWorkoutScreen'
 import OnboardingScreen from './src/screens/OnboardingScreen'
 import EmailConfirmationScreen from './src/screens/EmailConfirmationScreen'
+import TabNavigator from './src/navigation/TabNavigator'
 
-const Stack = createNativeStackNavigator()
+const RootStack = createNativeStackNavigator()
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -38,6 +38,9 @@ export default function App() {
     Orbitron_700Bold,
     Orbitron_900Black,
     Monoton_400Regular,
+    GemunuLibre_700Bold,
+    IBMPlexMono_400Regular,
+    IBMPlexMono_700Bold,
   })
 
   // For web, don't wait for fonts to load
@@ -194,38 +197,25 @@ export default function App() {
   }
 
   return (
-    <View style={styles.appContainer}>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {session ? (
-            !emailConfirmed ? (
-              <>
-                <Stack.Screen name="EmailConfirmation" component={EmailConfirmationScreen} />
-                <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                <Stack.Screen name="Dashboard" component={DashboardScreen} />
-                <Stack.Screen name="PreWorkout" component={PreWorkoutScreen} />
-                <Stack.Screen name="Workout" component={WorkoutScreen} />
-              </>
-            ) : hasCompletedOnboarding ? (
-              <>
-                <Stack.Screen name="Dashboard" component={DashboardScreen} />
-                <Stack.Screen name="PreWorkout" component={PreWorkoutScreen} />
-                <Stack.Screen name="Workout" component={WorkoutScreen} />
-              </>
+    <SafeAreaProvider>
+      <View style={styles.appContainer}>
+        <NavigationContainer>
+          <RootStack.Navigator screenOptions={{ headerShown: false }}>
+            {/* Auth Flow */}
+            {!session ? (
+              <RootStack.Screen name="Login" component={LoginScreen} />
+            ) : !emailConfirmed ? (
+              <RootStack.Screen name="EmailConfirmation" component={EmailConfirmationScreen} />
+            ) : !hasCompletedOnboarding ? (
+              <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
             ) : (
-              <>
-                <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                <Stack.Screen name="Dashboard" component={DashboardScreen} />
-                <Stack.Screen name="PreWorkout" component={PreWorkoutScreen} />
-                <Stack.Screen name="Workout" component={WorkoutScreen} />
-              </>
-            )
-          ) : (
-            <Stack.Screen name="Login" component={LoginScreen} />
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
-    </View>
+              /* Main App - Tab Navigator */
+              <RootStack.Screen name="Main" component={TabNavigator} />
+            )}
+          </RootStack.Navigator>
+        </NavigationContainer>
+      </View>
+    </SafeAreaProvider>
   )
 }
 
@@ -245,7 +235,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 25,
     fontStyle: 'italic',
-    transform: [{ rotate: '-2deg' }],
   },
   loadingSubtitle: {
     fontSize: 14,
