@@ -1,194 +1,240 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import BackgroundContainer from '../components/BackgroundContainer';
-import GlassCard from '../components/GlassCard';
 import NeonButton from '../components/NeonButton';
-import { colors, textStyles } from '../theme/typography';
+import VStack from '../components/VStack';
+import { colors } from '../theme/typography';
+import { tokens } from '../theme/tokens';
 import { getQuote } from '../utils/quotes';
+import { supabase } from '../lib/supabase';
+import { generateWorkout } from '../utils/workoutApi';
+import QuoteChipMeasured from '../components/QuoteChipMeasured';
+import SetBreakdownCompactGrid from '../components/SetBreakdownCompactGrid';
 
 const PreWorkoutScreen = ({ route, navigation }) => {
-  // Expecting params: workoutNum, workoutType, pattern, setBreakdown, targetReps, totalWorkouts
-  const {
-    workoutNum = 2,
-    totalWorkouts = 8,
-    workoutType = 'PYRAMID',
-    pattern = 'PYRAMID',
-    setBreakdown = [3,5,6,8,9,11,12,12],
-    targetReps = 0,
-  } = route.params || {};
+  const insets = useSafeAreaInsets();
   
-  // Determine if this is a max test day
-  const isMaxTestDay = workoutNum === 1;
+  // State for workout data fetched from database
+  const [workoutData, setWorkoutData] = useState({
+    workoutNum: 1,
+    totalWorkouts: 8,
+    workoutType: 'MAX TEST',
+    pattern: 'MAX TEST',
+    setBreakdown: null,
+    targetReps: null,
+    isMaxTestDay: true,
+    loading: true,
+  });
   
-  // Calculate total reps from setBreakdown if targetReps is not provided and not a max test day
-  const calculatedTargetReps = isMaxTestDay ? null : (targetReps || (setBreakdown ? setBreakdown.reduce((a, b) => a + b, 0) : 66));
-  const totalSets = isMaxTestDay ? 1 : (setBreakdown ? setBreakdown.length : 8);
   const quote = getQuote('preWorkout');
+  const nextSetIndex = 0;
+  
+  // Fetch current workout data from database
+  const fetchWorkoutData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    try {
+      // Fetch profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (!profile) return;
+      
+      // Determine next workout info
+      const workoutNum = profile.current_workout_in_cycle || 1;
+      
+      // For new users, show 0 as the current max until they complete the max test
+      const userMax = profile.current_max_pullups !== null ? profile.current_max_pullups : 0;
+      const cycleStartMax = profile.cycle_start_max !== null ? profile.cycle_start_max : userMax;
+      
+      const nextWorkout = await generateWorkout({
+        workoutNum,
+        userMax,
+        cycleStartMax,
+      });
+      
+      // Determine if this is a max test day
+      const isMaxTestDay = workoutNum === 1;
+      
+      setWorkoutData({
+        workoutNum,
+        totalWorkouts: 8,
+        workoutType: isMaxTestDay ? 'MAX TEST' : nextWorkout.patternName,
+        pattern: isMaxTestDay ? 'MAX TEST' : nextWorkout.patternName,
+        setBreakdown: isMaxTestDay ? null : nextWorkout.setBreakdown,
+        targetReps: isMaxTestDay ? null : nextWorkout.totalReps,
+        isMaxTestDay,
+        loading: false,
+      });
+    } catch (error) {
+      console.error('Error fetching workout data:', error);
+      setWorkoutData(prev => ({ ...prev, loading: false }));
+    }
+  };
+  
+  // Fetch data on mount and when screen comes into focus
+  useEffect(() => {
+    fetchWorkoutData();
+  }, []);
+  
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchWorkoutData();
+      return () => {};
+    }, [])
+  );
 
   const handleStartSession = () => {
     const timerStart = Date.now();
-    navigation.replace('Workout', {
-      workoutNum,
-      totalWorkouts,
-      workoutType: isMaxTestDay ? 'MAX TEST' : workoutType,
-      pattern: isMaxTestDay ? 'MAX TEST' : pattern,
-      setBreakdown: isMaxTestDay ? [0] : setBreakdown, // Just a placeholder for max test
-      targetReps: calculatedTargetReps,
+    navigation.navigate('Workout', {
+      workoutNum: workoutData.workoutNum,
+      totalWorkouts: workoutData.totalWorkouts,
+      workoutType: workoutData.workoutType,
+      pattern: workoutData.pattern,
+      setBreakdown: workoutData.setBreakdown,
+      targetReps: workoutData.targetReps,
       timerStart,
-      isMaxTestDay,
+      isMaxTestDay: workoutData.isMaxTestDay,
     });
   };
 
+
   return (
     <BackgroundContainer>
-      <View style={styles.container}>
-        {/* Workout info - using text shadow only for glow */}
-        <Text style={styles.title}>{`WORKOUT (${workoutNum}/${totalWorkouts})`}</Text>
-        
-        {/* Workout type - using enhanced styling for visual interest */}
-        <Text style={styles.workoutTypeText}>
-          {isMaxTestDay ? 'MAX TEST DAY' : pattern}
-        </Text>
-        
-        {/* Set breakdown or max test instructions */}
-        <GlassCard style={styles.setBreakdownCard} borderColor={colors.electricCyan} glowColor={colors.electricCyan}>
-          {isMaxTestDay ? (
-            <>
-              <Text style={styles.setBreakdownLabel}>MAX TEST INSTRUCTIONS:</Text>
-              <Text style={styles.maxTestInstructions}>
-                Perform a single set of as many pull-ups as you can with good form.
-                This will set your baseline for the next workouts in the cycle.
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.setBreakdownLabel}>SET BREAKDOWN:</Text>
-              <View style={styles.setGrid}>
-                {setBreakdown.map((reps, idx) => (
-                  <View key={idx} style={styles.setCell}>
-                    <Text style={styles.setLabel}>S{idx+1}</Text>
-                    <Text style={styles.setReps}>{reps}</Text>
-                  </View>
-                ))}
+      <ScrollView contentContainerStyle={[
+        styles.container,
+        { paddingTop: insets.top + 86, minHeight: '100%', justifyContent: 'flex-start' }
+      ]}>
+        {/* Show loading or content */}
+        {workoutData.loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>LOADING WORKOUT...</Text>
+          </View>
+        ) : (
+          <VStack space={16}>
+            {/* Set Breakdown Card */}
+            {workoutData.isMaxTestDay ? (
+              <View style={[styles.neonCardShadow, { shadowColor: tokens.border.primary }]}>
+                <LinearGradient
+                  colors={tokens.component.neonCard.background}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.setBreakdownCard}
+                >
+                  <Text style={styles.cardLabel}>MAX TEST INSTRUCTIONS</Text>
+                  <Text style={styles.maxTestInstructions}>
+                    Perform a single set of as many pull-ups as you can with good form.
+                    This will set your baseline for the next workouts in the cycle.
+                  </Text>
+                </LinearGradient>
               </View>
-            </>
-          )}
-        </GlassCard>
-        
-        {/* Total reps or max test goal */}
-        {!isMaxTestDay && (
-          <Text style={styles.totalRepsText}>TOTAL REPS: {calculatedTargetReps}</Text>
+            ) : (
+              <SetBreakdownCompactGrid
+                data={workoutData.setBreakdown?.map((reps, idx) => ({
+                  k: `S${idx + 1}`,
+                  v: reps.toString(),
+                  next: idx === nextSetIndex,
+                })) || []}
+              />
+            )}
+
+            {workoutData.isMaxTestDay && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLbl}>GOAL</Text>
+                <Text style={styles.totalVal}>MAX</Text>
+              </View>
+            )}
+
+            {/* Quote */}
+            <QuoteChipMeasured text={quote || 'Pain is weakness leaving the body!'} />
+
+            {/* CTA Button */}
+            <NeonButton 
+              title="START SESSION" 
+              onPress={handleStartSession}
+              variant="primary"
+            />
+          </VStack>
         )}
-        
-        {isMaxTestDay && (
-          <Text style={styles.totalRepsText}>GOAL: MAXIMUM POSSIBLE REPS</Text>
-        )}
-        
-        {/* Motivational message - no attribution */}
-        <Text style={styles.motivation}>{quote ? `"${quote}"` : ''}</Text>
-        
-        {/* Start button */}
-        <NeonButton title="START SESSION" onPress={handleStartSession} variant="primary" style={styles.startButton} />
-      </View>
+      </ScrollView>
     </BackgroundContainer>
   );
 };
 
 const styles = StyleSheet.create({
+  // Simple container like Dashboard
   container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     padding: 24,
   },
-  title: {
-    ...textStyles.pageTitle,
-    marginBottom: 16,
-    textAlign: 'center',
-    color: colors.electricCyan,
-    // Enhanced text shadow to ensure glow follows text contours
-    textShadowColor: colors.electricCyan,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-  workoutTypeText: {
-    fontSize: 28, // Increased from 24 to make it more prominent
-    fontFamily: 'Orbitron_700Bold',
-    color: 'white', // Changed from brightPink to white for better contrast
-    marginBottom: 24,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    // Multi-layered text shadow for more visual interest
-    textShadowColor: colors.brightPink, // Keep pink glow for visual interest
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
-    // Additional text shadow layers for a more dynamic effect
-    elevation: 3, // Android elevation for additional depth
+  // Neon Card
+  neonCardShadow: {
+    borderRadius: 16,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
   },
   setBreakdownCard: {
-    marginBottom: 16,
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: 340,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: tokens.border.primary,
     padding: 16,
   },
-  setBreakdownLabel: {
-    ...textStyles.infoLabel,
-    marginBottom: 8,
+  cardLabel: {
+    fontFamily: 'IBMPlexMono_400Regular',
+    fontSize: 12,
+    color: colors.mediumGray,
+    textTransform: 'uppercase',
+    marginBottom: 12,
     textAlign: 'center',
   },
   maxTestInstructions: {
-    ...textStyles.bodyText,
+    fontFamily: 'IBMPlexMono_400Regular',
+    fontSize: 14,
     color: colors.white,
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 8,
   },
-  setGrid: {
+  // Total Reps
+  totalRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 12,
+    alignItems: 'baseline',
   },
-  setCell: {
-    alignItems: 'center',
-    margin: 6,
-    minWidth: 36,
+  // Start button removed - no longer needed with VStack
+  totalLbl: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 12,
+    color: '#FFF',
+    marginRight: 8,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
-  setLabel: {
-    ...textStyles.smallText,
-    color: colors.lightGray,
-    marginBottom: 2,
-  },
-  setReps: {
-    ...textStyles.heroNumber,
-    fontSize: 20,
+  totalVal: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 22,
     color: colors.electricCyan,
   },
-  totalRepsText: {
-    ...textStyles.accentLabel,
-    fontSize: 18,
-    marginBottom: 20,
-    textAlign: 'center',
-    color: colors.neonYellow,
-    textShadowColor: colors.neonYellow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
+  // Loading styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  motivation: {
-    ...textStyles.quote,
-    marginVertical: 12,
-    textAlign: 'center',
-    fontSize: 14,
-    // Ensure no additional shadow effects
-    textShadowRadius: 4,
-  },
-  startButton: {
-    marginTop: 16,
-    width: '100%',
-    maxWidth: 340,
+  loadingText: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 16,
+    color: colors.electricCyan,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
 });
 
-export default PreWorkoutScreen; 
+export default PreWorkoutScreen;
