@@ -63,6 +63,13 @@ export const tokens = {
     warning: palette.neonYellow,
     error: palette.coral,
   },
+
+  // Neon color tokens for progress rings and glows
+  color: {
+    pinkA: '#FF006B',    // Progress ring gradient start - more vibrant
+    pinkB: '#FF3DFF',    // Progress ring gradient end - more vibrant
+    pinkGlow: '#FF44C8', // Progress ring glow effect
+  },
   
   // Component-specific tokens
   component: {
