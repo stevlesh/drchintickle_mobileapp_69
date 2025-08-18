@@ -79,16 +79,28 @@ const PreWorkoutScreen = ({ route, navigation }) => {
     }
   };
   
-  // Fetch data on mount and when screen comes into focus
+  // Fetch data on mount
   useEffect(() => {
     fetchWorkoutData();
   }, []);
   
+  // Only refetch on focus if route params indicate data should be refreshed
   useFocusEffect(
     React.useCallback(() => {
-      fetchWorkoutData();
+      // Check if we should refresh data based on route params
+      const shouldRefresh = route?.params?.shouldRefresh;
+      if (shouldRefresh) {
+        console.log('🔄 PreWorkout: Refreshing data due to route param');
+        fetchWorkoutData();
+        // Clear the refresh flag to prevent repeated refreshes
+        if (navigation.setParams) {
+          navigation.setParams({ shouldRefresh: false });
+        }
+      } else {
+        console.log('⏭️ PreWorkout: Skipping refresh, using cached data');
+      }
       return () => {};
-    }, [])
+    }, [route?.params?.shouldRefresh])
   );
 
   const handleStartSession = () => {

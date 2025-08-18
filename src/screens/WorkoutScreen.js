@@ -217,7 +217,14 @@ export default function WorkoutScreen({ navigation, route }) {
         updated_at: new Date().toISOString()
       }).eq('id', user.id);
     }
+    // Navigate to Home and signal that data should be refreshed
     navigation.navigate('Home');
+    
+    // Also signal WorkoutStack that it should refresh PreWorkout data if user navigates back
+    navigation.navigate('WorkoutStack', {
+      screen: 'PreWorkout',
+      params: { shouldRefresh: true }
+    });
   }
 
   const handleBackToDashboard = () => {

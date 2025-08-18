@@ -81,7 +81,52 @@ const DashboardScreen = ({ navigation }) => {
     return streak;
   };
 
+  // Fetch just stats (sessions, streak, current max) - no workout data
   const fetchUserStats = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    try {
+      // Fetch profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (!profile) return;
+      
+      // Fetch workout sessions
+      const { data: workoutSessions } = await supabase
+        .from('workout_sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('workout_date', { ascending: false });
+      
+      // Calculate stats
+      const totalSessions = workoutSessions?.length || 0;
+      
+      // Extract workout dates for streak calculation
+      const workoutDates = workoutSessions?.map(session => session.workout_date) || [];
+      const currentStreak = calculateStreak(workoutDates);
+      
+      // For new users, show 0 as the current max until they complete the max test
+      const userMax = profile.current_max_pullups !== null ? profile.current_max_pullups : 0;
+      
+      // Update only stats, keep existing workout data
+      setUserStats(prev => ({
+        ...prev,
+        currentMax: userMax,
+        totalSessions: totalSessions,
+        currentStreak: currentStreak,
+      }));
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+    }
+  };
+
+  // Fetch complete data including workout info - used on initial load
+  const fetchCompleteData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     
@@ -122,7 +167,7 @@ const DashboardScreen = ({ navigation }) => {
         cycleStartMax,
       });
       
-      console.log('Next workout data:', nextWorkout); // Add logging to debug
+      console.log('Next workout data:', nextWorkout);
       
       setUserStats({
         currentMax: userMax,
@@ -134,22 +179,22 @@ const DashboardScreen = ({ navigation }) => {
         },
       });
     } catch (error) {
-      console.error('Error fetching user stats:', error);
+      console.error('Error fetching complete data:', error);
     }
   };
 
   // Initial data load
   useEffect(() => {
-    fetchUserStats();
+    fetchCompleteData(); // Load everything on mount
     const { quote, context } = getDashboardQuote();
     setCurrentQuote(quote);
     setQuoteContext(context);
   }, []);
 
-  // Refresh data when screen comes into focus (after completing a workout)
+  // Refresh only stats when screen comes into focus (not workout data)
   useFocusEffect(
     React.useCallback(() => {
-      fetchUserStats();
+      fetchUserStats(); // Only refresh stats, not workout patterns
       return () => {}; // cleanup function
     }, [])
   );
