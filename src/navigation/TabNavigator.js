@@ -3,7 +3,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -30,11 +29,10 @@ const WorkoutStackNavigator = () => {
   );
 };
 
-// Custom tab bar background component with glass morphism
+// Custom tab bar background component with stable gradient effect
 const TabBarBackground = () => (
-  <BlurView
-    intensity={80}
-    tint="light"
+  <LinearGradient
+    colors={['rgba(20, 20, 45, 0.95)', 'rgba(10, 10, 25, 0.98)']}
     style={{
       position: 'absolute',
       left: 0,

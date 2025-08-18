@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 2,
     borderColor: colors.electricCyan + '60', // 60% opacity
-    fontFamily: 'Orbitron_400Regular',
+    fontFamily: 'IBMPlexMono_400Regular',
     letterSpacing: 1,
   },
   signInButton: {

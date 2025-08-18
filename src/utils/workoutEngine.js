@@ -22,9 +22,22 @@ function getMultiplierForWorkout(workoutNum) {
   return 2.6 + ((workoutNum - 2) * (3.0 - 2.6) / 6);
 }
 
-// Randomly select a pattern
-function pickRandomPattern() {
-  const idx = Math.floor(Math.random() * repPatterns.length);
+// Deterministically select a pattern based on user state
+function pickDeterministicPattern(userId, workoutNum, cycleCount = 0) {
+  // Create a deterministic seed from user state
+  let seed = 0;
+  if (userId) {
+    // Use user ID characters to create a numeric seed
+    for (let i = 0; i < userId.length; i++) {
+      seed += userId.charCodeAt(i);
+    }
+  }
+  
+  // Add workout number and cycle to make different workouts have different patterns
+  seed += (workoutNum || 1) * 100 + (cycleCount || 0) * 1000;
+  
+  // Deterministic random using seed
+  const idx = seed % repPatterns.length;
   return repPatterns[idx];
 }
 
@@ -173,6 +186,8 @@ function getWorkoutForCycle({
   workoutNum, // 1-8
   userMax,    // integer
   cycleStartMax, // integer
+  userId = null, // for deterministic pattern selection
+  cycleCount = 0, // current cycle number
 }) {
   if (workoutNum === 1) {
     return {
@@ -185,7 +200,7 @@ function getWorkoutForCycle({
   }
   const multiplier = getMultiplierForWorkout(workoutNum);
   const totalReps = Math.round(multiplier * (cycleStartMax || userMax));
-  const patternName = pickRandomPattern();
+  const patternName = pickDeterministicPattern(userId, workoutNum, cycleCount);
   const setBreakdown = generateSetBreakdown(patternName, totalReps, userMax);
   return {
     type: 'volume',
@@ -199,7 +214,7 @@ function getWorkoutForCycle({
 module.exports = {
   repPatterns,
   getMultiplierForWorkout,
-  pickRandomPattern,
+  pickDeterministicPattern,
   generateSetBreakdown,
   getWorkoutForCycle,
 }; 

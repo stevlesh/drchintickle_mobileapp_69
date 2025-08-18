@@ -12,9 +12,10 @@ import StatCard from '../components/StatCard';
 import NeonIcon from '../components/NeonIcon';
 import { colors, textStyles } from '../theme/typography';
 import { supabase } from '../lib/supabase';
-import { CalendarBlank, LadderSimple, Target } from 'phosphor-react-native';
+import { CalendarBlank, LadderSimple, Target, Trophy, RainbowCloud } from 'phosphor-react-native';
 import { getQuote, getDashboardQuote } from '../utils/quotes';
 import { generateWorkout } from '../utils/workoutApi';
+import QuoteChipMeasured from '../components/QuoteChipMeasured';
 
 const DashboardScreen = ({ navigation }) => {
   const [userStats, setUserStats] = useState({
@@ -161,14 +162,18 @@ const DashboardScreen = ({ navigation }) => {
     // Check if this is a max test day (workout 1)
     const isMaxTestDay = userStats.nextWorkout.workoutNum === 1;
     
-    navigation.navigate('PreWorkout', {
-      workoutNum: userStats.nextWorkout.workoutNum,
-      workoutType: isMaxTestDay ? 'MAX TEST' : userStats.nextWorkout.patternName,
-      pattern: isMaxTestDay ? 'MAX TEST' : userStats.nextWorkout.patternName,
-      setBreakdown: isMaxTestDay ? null : userStats.nextWorkout.setBreakdown,
-      targetReps: isMaxTestDay ? null : userStats.nextWorkout.totalReps || 0,
-      totalWorkouts: 8,
-      isMaxTestDay,
+    // Navigate to WorkoutStack screen, then PreWorkout within it
+    navigation.navigate('WorkoutStack', {
+      screen: 'PreWorkout',
+      params: {
+        workoutNum: userStats.nextWorkout.workoutNum,
+        workoutType: isMaxTestDay ? 'MAX TEST' : userStats.nextWorkout.patternName,
+        pattern: isMaxTestDay ? 'MAX TEST' : userStats.nextWorkout.patternName,
+        setBreakdown: isMaxTestDay ? null : userStats.nextWorkout.setBreakdown,
+        targetReps: isMaxTestDay ? null : userStats.nextWorkout.totalReps || 0,
+        totalWorkouts: 8,
+        isMaxTestDay,
+      }
     });
   }
 
@@ -259,10 +264,8 @@ const DashboardScreen = ({ navigation }) => {
           style={styles.ctaButton}
         />
 
-        {/* Motivational Quote - no card, just neon text */}
-        <Text style={styles.quoteTextDirect}>
-          {currentQuote ? `"${currentQuote}"` : '"Pain is weakness leaving the body!"'}
-        </Text>
+        {/* Motivational Quote */}
+        <QuoteChipMeasured text={currentQuote || 'Pain is weakness leaving the body!'} />
 
         {/* Logout Button - For development */}
         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>

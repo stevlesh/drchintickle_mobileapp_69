@@ -1,71 +1,72 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, Platform } from 'react-native';
-import GlassCard from './GlassCard';
-import { colors, textStyles } from '../theme/typography';
+import { View, Text, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Trophy, RainbowCloud } from 'phosphor-react-native';
+import { colors } from '../theme/typography';
 
-const StatCard = ({ icon, count, label, borderColor, glowColor }) => {
+const StatCard = ({ icon, count, label, borderColor, glowColor, gradientColors }) => {
+  // Icon mapping
+  const IconComponent = icon === 'trophy' ? Trophy : RainbowCloud;
+
   return (
-    <GlassCard 
-      style={styles.card}
-      borderColor={borderColor}
-      glowColor={glowColor}
-    >
-      <View style={styles.row}>
-        <Image 
-          source={icon} 
-          style={[styles.icon, { tintColor: borderColor }]}
-          defaultSource={icon} // Fallback to same icon
-          onError={(e) => console.log('Icon failed to load:', e.nativeEvent.error)}
-        />
-        <Text style={styles.count}>{count}</Text>
-      </View>
-      <Text style={styles.label} numberOfLines={1} ellipsizeMode="tail">
-        {label}
-      </Text>
-    </GlassCard>
+    <View style={[styles.shadowWrap, { shadowColor: glowColor }]}>
+      <LinearGradient
+        colors={gradientColors || ['#3e0066', '#8b005c']}  // Use themed gradient or fallback
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.card, { borderColor }]}
+      >
+        <View style={styles.iconRow}>
+          <IconComponent size={28} color={borderColor} weight="regular" />
+          <Text style={[styles.label, { marginLeft: 6 }]}>{label}</Text>
+        </View>
+
+        <Text style={[styles.value, { color: borderColor, textShadowColor: borderColor }]}>
+          {count}
+        </Text>
+      </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    paddingVertical: 20,
-    paddingHorizontal: 16, // Reduced from 24
+  shadowWrap: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginHorizontal: 8,
-    minHeight: 120,
-    minWidth: 100, // Ensure minimum width
+    borderRadius: 16,
+    shadowOpacity: 0.4,
+    shadowRadius: 6,      // Tighter halo
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
   },
-  row: {
+  card: {
+    height: 100,          // Tighter than current 120
+    borderRadius: 16,
+    borderWidth: 1.5,     // Crisper line
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    justifyContent: 'space-between',
+  },
+  iconRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  icon: {
-    width: 36,
-    height: 36,
-    resizeMode: 'contain',
-    ...Platform.select({
-      web: {
-        objectFit: 'contain',
-      }
-    })
-  },
-  count: {
-    ...textStyles.heroNumber,
-    fontSize: 18,
-    color: colors.white,
-    fontWeight: '600',
+    alignSelf: 'center',   // centers the whole bundle horizontally
+    width: 100,            // fixed width for consistent label alignment
   },
   label: {
-    ...textStyles.infoLabel,
-    fontSize: 10, // Reduced from 12
+    fontFamily: 'IBMPlexMono_400Regular',
+    fontSize: 14,
     color: colors.white,
-    letterSpacing: 0.5, // Reduced from 1
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  value: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 32,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
     textAlign: 'center',
-    width: '100%', // Ensure label takes full width
+    width: '100%',
   },
 });
 

@@ -208,14 +208,16 @@ export default function WorkoutScreen({ navigation, route }) {
         duration_minutes: durationMinutes,
       });
       
-      // Advance to next workout in cycle
+      // Advance to next workout in cycle and clear stored pattern
       let nextWorkoutNum = workoutNum + 1;
       if (nextWorkoutNum > totalWorkouts) nextWorkoutNum = 1;
       await supabase.from('profiles').update({
-        current_workout_in_cycle: nextWorkoutNum
+        current_workout_in_cycle: nextWorkoutNum,
+        next_workout_pattern: null, // Clear the stored pattern so a new one is generated
+        updated_at: new Date().toISOString()
       }).eq('id', user.id);
     }
-    navigation.navigate('Dashboard');
+    navigation.navigate('Home');
   }
 
   const handleBackToDashboard = () => {
@@ -228,7 +230,15 @@ export default function WorkoutScreen({ navigation, route }) {
       clearInterval(restTimerRef.current);
       restTimerRef.current = null;
     }
-    navigation.navigate('Dashboard')
+    
+    // Reset the WorkoutStack to PreWorkout screen first
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'PreWorkout' }],
+    });
+    
+    // Then navigate to Home tab
+    navigation.navigate('Home')
   }
 
   // Format seconds to MM:SS

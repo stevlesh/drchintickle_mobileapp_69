@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, textStyles } from '../theme/typography';
+import { colors } from '../theme/typography';
 
 const NeonButton = ({ 
   title, 
@@ -65,7 +65,7 @@ const NeonButton = ({
         ]}
       >
         <View style={[styles.content, disabled && styles.disabledContent]}>
-          <Text style={[textStyles.buttonText, textStyle, disabled && styles.disabledText]}>
+          <Text style={[styles.buttonText, textStyle, disabled && styles.disabledText]}>
             {title}
           </Text>
         </View>
@@ -97,6 +97,14 @@ const styles = StyleSheet.create({
   },
   disabledText: {
     opacity: 0.7,
+  },
+  buttonText: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: colors.white,
   },
 });
 

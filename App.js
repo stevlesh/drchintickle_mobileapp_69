@@ -26,8 +26,8 @@ export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [assetsLoaded, setAssetsLoaded] = useState(false)
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false)
-  const [checkingOnboarding, setCheckingOnboarding] = useState(true)
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true) // Temporarily disabled onboarding
+  const [checkingOnboarding, setCheckingOnboarding] = useState(false) // Disabled user state checking
   const [emailConfirmed, setEmailConfirmed] = useState(true) // Default to true to avoid flash
 
   // Load Miami Vice fonts - with web fallback

@@ -12,15 +12,15 @@ export const typography = {
   
   // H1 - Hero Numbers (Progress Ring center, large stats)
   h1: {
-    fontFamily: 'Orbitron_900Black',
-    fontWeight: '900',
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontWeight: '700',
     fontSize: 48,
     letterSpacing: 2,
   },
   
   // H2 - Page Titles (Screen headers)
   h2: {
-    fontFamily: 'Orbitron_700Bold',
+    fontFamily: 'IBMPlexMono_700Bold',
     fontWeight: '700',
     fontSize: 32,
     letterSpacing: 1.5,
@@ -28,7 +28,7 @@ export const typography = {
   
   // H3 - Sub-Titles & Section Headers
   h3: {
-    fontFamily: 'Orbitron_700Bold',
+    fontFamily: 'IBMPlexMono_700Bold',
     fontWeight: '700',
     fontSize: 24,
     letterSpacing: 1,
@@ -36,7 +36,7 @@ export const typography = {
   
   // Button Text - Bold and impactful
   button: {
-    fontFamily: 'Orbitron_700Bold',
+    fontFamily: 'IBMPlexMono_700Bold',
     fontWeight: '700',
     fontSize: 16,
     letterSpacing: 1,
@@ -45,14 +45,14 @@ export const typography = {
   
   // Label/Info Text - Clean and readable
   label: {
-    fontFamily: 'Orbitron_400Regular',
+    fontFamily: 'IBMPlexMono_400Regular',
     fontSize: 14,
     letterSpacing: 0.5,
   },
   
   // Small text - For subtitles and details
   small: {
-    fontFamily: 'Orbitron_400Regular',
+    fontFamily: 'IBMPlexMono_400Regular',
     fontSize: 12,
     letterSpacing: 0.5,
   },
