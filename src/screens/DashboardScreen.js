@@ -12,7 +12,8 @@ import StatCard from '../components/StatCard';
 import NeonIcon from '../components/NeonIcon';
 import { colors, textStyles } from '../theme/typography';
 import { supabase } from '../lib/supabase';
-import { CalendarBlank, LadderSimple, Target, Trophy, RainbowCloud } from 'phosphor-react-native';
+import { Trophy, RainbowCloud } from 'phosphor-react-native';
+import WorkoutProgressTracker from '../components/WorkoutProgressTracker';
 import { getQuote, getDashboardQuote } from '../utils/quotes';
 import { generateWorkout } from '../utils/workoutApi';
 import QuoteChipMeasured from '../components/QuoteChipMeasured';
@@ -83,25 +84,47 @@ const DashboardScreen = ({ navigation }) => {
 
   // Fetch just stats (sessions, streak, current max) - no workout data
   const fetchUserStats = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
     try {
-      // Fetch profile
-      const { data: profile } = await supabase
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('Auth error in fetchUserStats:', authError);
+        return;
+      }
+      if (!user) {
+        console.log('No user found in fetchUserStats');
+        return;
+      }
+      
+      console.log('fetchUserStats: Found user:', user.id);
+      
+      // Fetch profile with error handling
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
       
-      if (!profile) return;
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        return;
+      }
       
-      // Fetch workout sessions
-      const { data: workoutSessions } = await supabase
+      if (!profile) {
+        console.log('No profile found for user:', user.id);
+        return;
+      }
+      
+      // Fetch workout sessions with error handling
+      const { data: workoutSessions, error: sessionsError } = await supabase
         .from('workout_sessions')
         .select('*')
         .eq('user_id', user.id)
         .order('workout_date', { ascending: false });
+      
+      if (sessionsError) {
+        console.error('Workout sessions fetch error:', sessionsError);
+        // Continue with empty sessions array
+      }
       
       // Calculate stats
       const totalSessions = workoutSessions?.length || 0;
@@ -191,12 +214,18 @@ const DashboardScreen = ({ navigation }) => {
     setQuoteContext(context);
   }, []);
 
-  // Refresh only stats when screen comes into focus (not workout data)
+  // Add loading state to prevent multiple simultaneous fetches
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Refresh only stats when screen comes into focus (not workout data)  
   useFocusEffect(
     React.useCallback(() => {
-      fetchUserStats(); // Only refresh stats, not workout patterns
+      if (!isRefreshing) {
+        setIsRefreshing(true);
+        fetchUserStats().finally(() => setIsRefreshing(false)); // Only refresh stats, not workout patterns
+      }
       return () => {}; // cleanup function
-    }, [])
+    }, [isRefreshing])
   );
 
   const handleLogout = async () => {
@@ -248,57 +277,25 @@ const DashboardScreen = ({ navigation }) => {
             icon="trophy"
             count={userStats.totalSessions}
             label="SESSIONS"
-            borderColor={colors.gold}
-            glowColor={colors.gold}
+            borderColor={colors.electricCyan}
+            glowColor={colors.electricCyan}
           />
           <StatCard
             icon="rainbow"
             count={userStats.currentStreak}
             label="STREAK"
-            borderColor={colors.orange}
-            glowColor={colors.orange}
+            borderColor={colors.electricCyan}
+            glowColor={colors.electricCyan}
           />
         </View>
 
-        {/* Next Workout Panel - Horizontal Rows */}
-        <View style={[styles.panelShadow, { shadowColor: colors.electricCyan }]}>
-          <LinearGradient
-            colors={['#1d1440', '#301058']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.panel, { borderColor: colors.electricCyan }]}
-          >
-            {/* Next Workout Row */}
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <CalendarBlank size={18} color={colors.electricCyan} weight="regular" />
-                <Text style={styles.rowLabel}>NEXT WORKOUT</Text>
-              </View>
-              <Text style={styles.rowValue}>{userStats.nextWorkout.workoutNum} / 8</Text>
-            </View>
-
-            {/* Workout Type Row */}
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <LadderSimple size={18} color={colors.electricCyan} weight="regular" />
-                <Text style={styles.rowLabel}>WORKOUT TYPE</Text>
-              </View>
-              <Text style={styles.rowValue}>
-                {isMaxTestDay ? 'MAX TEST' : userStats.nextWorkout.patternName || 'VOLUME'}
-              </Text>
-            </View>
-
-            {/* Target Reps Row */}
-            <View style={[styles.row, { marginBottom: 0 }]}>
-              <View style={styles.rowLeft}>
-                <Target size={18} color={colors.electricCyan} weight="regular" />
-                <Text style={styles.rowLabel}>TARGET REPS</Text>
-              </View>
-              <Text style={styles.rowValue}>
-                {isMaxTestDay ? 'MAX' : (userStats.nextWorkout.totalReps || 0)}
-              </Text>
-            </View>
-          </LinearGradient>
+        {/* Workout Progress Tracker */}
+        <View style={styles.trackerContainer}>
+          <WorkoutProgressTracker 
+            currentWorkoutNum={userStats.nextWorkout.workoutNum}
+            workoutType={isMaxTestDay ? 'MAX TEST' : userStats.nextWorkout.patternName}
+            totalWorkouts={8}
+          />
         </View>
 
         {/* CTA Button */}
@@ -324,6 +321,7 @@ const DashboardScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     padding: 24,
+    paddingBottom: 80, // Extra bottom padding for easier logout access
   },
   header: {
     marginBottom: 16,
@@ -332,58 +330,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginVertical: 24,
+    marginBottom: 8, // 8px bottom margin
     paddingHorizontal: 4, // Reduced from 8px
   },
-  panelShadow: {
-    marginVertical: 24,
-    marginHorizontal: 8,
-    borderRadius: 16,
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
-  },
-  panel: {
-    borderRadius: 16,
-    borderWidth: 1.5,
-    padding: 16,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-  },
-  rowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  rowLabel: {
-    fontFamily: 'IBMPlexMono_400Regular',
-    fontSize: 12,
-    color: '#FFFFFF',
-    textTransform: 'uppercase',
-  },
-  rowValue: {
-    fontFamily: 'IBMPlexMono_700Bold',
-    fontSize: 16,
-    color: colors.electricCyan,
-    textAlign: 'right',
-    flexShrink: 1,
-    maxWidth: '60%',
+  trackerContainer: {
+    marginTop: 8, // 8px top margin (8px + 8px = 16px total gap from stats)
+    marginBottom: 8, // 8px bottom margin
+    paddingHorizontal: 4, // Match stats grid for alignment
   },
   ctaButton: {
-    marginVertical: 24,
+    marginTop: 8, // 8px top margin (8px + 8px = 16px total gap from panel)
+    marginBottom: 24, // 24px bottom margin for more space before quote
     marginHorizontal: 8,
   },
   quote: {
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: 8, // 8px top margin (24px + 8px = 32px total gap from button)
     paddingVertical: 16,
     marginHorizontal: 8,
   },

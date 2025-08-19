@@ -14,8 +14,8 @@ const ProgressRing = ({ currentMax, targetMax = 69 }) => {
   const current = Number(currentMax) || 0;
   const target = Number(targetMax) || 69;
   
-  // Debug logging
-  console.log('ProgressRing props:', { currentMax, targetMax, current, target });
+  // Debug logging temporarily enabled
+  // console.log('ProgressRing props:', { currentMax, targetMax, current, target });
   
   // Simplified sizing to match neon spec - pad = thickness * 2 for halo clearance
   const innerSize = 170; // Inner diameter of the arc (not including halo padding)
@@ -39,7 +39,7 @@ const ProgressRing = ({ currentMax, targetMax = 69 }) => {
   const endX = center + radius * Math.cos(endAngle);
   const endY = center + radius * Math.sin(endAngle);
   
-  console.log('ProgressRing calculated:', { progress, radius, center, circumference });
+  // Calculations completed - logging removed to prevent spam
 
   // Determine what to display in the center of the ring
   const displayValue = current === 0 ? "TBD" : current;

@@ -1,3 +1,8 @@
+// TEMPORARY: Testing network connectivity
+// Uncomment next 2 lines to test network:
+// import TestNetwork from './TestNetwork';
+// export { TestNetwork as default };
+
 import React, { useState, useEffect } from 'react' // Updated
 import { View, ActivityIndicator, Text, StyleSheet, Platform } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
@@ -71,38 +76,94 @@ export default function App() {
     loadAssets();
   }, []);
 
+  // Add flag to prevent multiple simultaneous calls
+  const [isCheckingUserState, setIsCheckingUserState] = useState(false);
+
   // Check user state using server-side RPC for better mobile UX
   const checkUserState = async (userId) => {
+    // Prevent multiple simultaneous calls
+    if (isCheckingUserState) {
+      console.log('Already checking user state, skipping...');
+      return;
+    }
+
+    setIsCheckingUserState(true);
+    
     try {
       console.log('Checking user state for:', userId);
       
-      // Use server-side RPC to get complete user state
-      const { data, error } = await supabase
-        .rpc('get_user_app_state', { user_id: userId });
+      // Try RPC first, but handle failures gracefully
+      let userState = null;
+      let rpcError = null;
 
-      console.log('User state response:', { data, error });
+      try {
+        const rpcResult = await Promise.race([
+          supabase.rpc('get_user_app_state', { user_id: userId }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('RPC timeout')), 5000)
+          )
+        ]);
+        
+        if (rpcResult.error) {
+          rpcError = rpcResult.error;
+          console.log('RPC returned error:', rpcError.message);
+        } else {
+          userState = rpcResult.data;
+          console.log('RPC success:', userState);
+        }
+      } catch (rpcErr) {
+        rpcError = rpcErr;
+        console.log('RPC failed:', rpcErr.message);
+      }
 
-      if (error) {
-        console.error('Error checking user state:', error);
-        // Fallback to basic profile check
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('has_completed_onboarding')
-          .eq('id', userId)
-          .single();
+      if (userState && !rpcError) {
+        // RPC success - use the returned data
+        setEmailConfirmed(userState.email_confirmed !== false);
         
-        setHasCompletedOnboarding(profile?.has_completed_onboarding || false);
-      } else if (data) {
-        // Set email confirmation status
-        setEmailConfirmed(data.email_confirmed);
-        
-        if (!data.email_confirmed) {
+        if (!userState.email_confirmed) {
           console.log('Email not confirmed yet');
-          // User needs to confirm email first
           setHasCompletedOnboarding(false);
         } else {
-          // Email is confirmed, check onboarding
-          setHasCompletedOnboarding(!data.needs_onboarding);
+          setHasCompletedOnboarding(!userState.needs_onboarding);
+        }
+      } else {
+        // RPC failed - fallback to direct profile queries (original logic)
+        console.log('Using fallback profile queries...');
+        
+        try {
+          // Check email confirmation from auth user  
+          const { data: { user } } = await supabase.auth.getUser();
+          const emailConfirmed = user?.email_confirmed_at != null;
+          setEmailConfirmed(emailConfirmed);
+          
+          if (!emailConfirmed) {
+            console.log('Email not confirmed (fallback check)');
+            setHasCompletedOnboarding(false);
+          } else {
+            // Check onboarding status from profile
+            console.log('Fetching profile for user:', userId);
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('has_completed_onboarding')
+              .eq('id', userId)
+              .single();
+            
+            if (profileError) {
+              console.error('Profile fetch error in fallback:', profileError);
+              // If profile doesn't exist, assume onboarding complete for development
+              console.log('Assuming onboarding complete due to profile error');
+              setHasCompletedOnboarding(true);
+            } else {
+              console.log('Profile found in fallback:', profile);
+              setHasCompletedOnboarding(profile?.has_completed_onboarding || false);
+            }
+          }
+        } catch (fallbackError) {
+          console.error('Fallback queries also failed:', fallbackError);
+          // Last resort - assume complete for development
+          setEmailConfirmed(true);
+          setHasCompletedOnboarding(true);
+          console.log('Using last resort defaults');
         }
       }
     } catch (error) {
@@ -111,6 +172,7 @@ export default function App() {
     } finally {
       console.log('Setting checkingOnboarding to false');
       setCheckingOnboarding(false);
+      setIsCheckingUserState(false);
     }
   };
 
@@ -134,16 +196,17 @@ export default function App() {
       setSession(session);
       
       if (session?.user?.id) {
-        // For new signups, add a small delay to ensure profile is created by database trigger
+        // Only check user state for specific events that matter
         if (_event === 'SIGNED_UP') {
           console.log('New user signup detected, waiting for profile creation');
           // Small delay to ensure database trigger has created the profile
           setTimeout(() => {
             checkUserState(session.user.id);
-          }, 1000);
-        } else {
+          }, 1500); // Increased timeout slightly
+        } else if (_event === 'SIGNED_IN') {
           checkUserState(session.user.id);
         }
+        // Skip user state check for TOKEN_REFRESHED and other events
       } else {
         setCheckingOnboarding(false);
         setHasCompletedOnboarding(false);

@@ -16,4 +16,31 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: Platform.OS === 'web',
   },
+  global: {
+    headers: {
+      'X-Client-Info': 'supabase-js-rn'
+    },
+    ...(Platform.OS !== 'web' && {
+      fetch: (url, options = {}) => {
+        let finalHeaders = {};
+        
+        // Handle different header formats from Supabase client
+        if (options.headers && options.headers.map) {
+          // REST API calls come with headers.map structure - flatten it
+          finalHeaders = { ...options.headers.map };
+        } else if (options.headers) {
+          // Auth API calls have flat headers - use directly
+          finalHeaders = { ...options.headers };
+        }
+        
+        // Add our custom header
+        finalHeaders['X-Client-Info'] = 'supabase-js-rn';
+        
+        return fetch(url, {
+          ...options,
+          headers: finalHeaders,
+        });
+      },
+    }),
+  },
 })
