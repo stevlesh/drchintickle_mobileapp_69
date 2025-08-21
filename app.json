@@ -2,6 +2,7 @@
   "expo": {
     "name": "Dr. ChinTickle",
     "slug": "dr-chintickle-v2",
+    "scheme": "drchintickle",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/icons/sessions.png",

@@ -3,8 +3,9 @@
 // import TestNetwork from './TestNetwork';
 // export { TestNetwork as default };
 
+import "react-native-url-polyfill/auto"; // keep once (if already present, don't duplicate)
 import React, { useState, useEffect } from 'react' // Updated
-import { View, ActivityIndicator, Text, StyleSheet, Platform } from 'react-native'
+import { View, ActivityIndicator, Text, StyleSheet, Platform, AppState } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -18,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Asset } from 'expo-asset'
 import { supabase } from './src/lib/supabase'
 import { colors } from './src/theme/typography'
+import { installAuthLinking } from './src/auth/supabaseAuth'
 
 // Import screens
 import LoginScreen from './src/screens/LoginScreen'
@@ -28,6 +30,11 @@ import TabNavigator from './src/navigation/TabNavigator'
 const RootStack = createNativeStackNavigator()
 
 export default function App() {
+  // Temporary: silence other data fetches during probe
+  // if (__DEV__) {
+  //   globalThis.__PROBES_ONLY__ = true;
+  // }
+
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [assetsLoaded, setAssetsLoaded] = useState(false)
@@ -50,6 +57,76 @@ export default function App() {
 
   // For web, don't wait for fonts to load
   const shouldWaitForFonts = Platform.OS !== 'web'
+
+  // AppState token refresh management + probes + auth linking
+  useEffect(() => {
+    // Install auth deep linking handler
+    const offAuthLinking = installAuthLinking();
+    
+    // Token refresh on foreground/background
+    const sub = AppState.addEventListener("change", (s) => {
+      if (s === "active") supabase.auth.startAutoRefresh();
+      else supabase.auth.stopAutoRefresh();
+    });
+
+    // Surgical diagnostic probes
+    (async () => {
+      try {
+        console.log("probe:start");
+
+        const url = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+        const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+        const urlTrim = url.trim();
+        const urlOk = /^https:\/\/.+\.supabase\.co$/.test(urlTrim);
+        console.log("env ok", !!urlTrim, !!anon, "urlOk", urlOk, "sameAfterTrim", url === urlTrim);
+
+        // 0) Device internet sanity
+        try {
+          const r0 = await fetch("https://www.google.com/generate_204");
+          console.log("net:google", r0.status); // expect 204
+        } catch (e) {
+          console.log("net:google:fail", String(e?.message || e));
+        }
+
+        // 1) Supabase health (with apikey)
+        try {
+          const r1 = await fetch(`${urlTrim}/auth/v1/health`, { headers: { apikey: anon } });
+          console.log("net:authHealth", r1.status); // expect 200
+        } catch (e) {
+          console.log("net:authHealth:fail", String(e?.message || e));
+        }
+
+        // 2) Local session read (no network)
+        const s = await supabase.auth.getSession();
+        console.log("hasToken", !!s.data.session?.access_token);
+
+        // 3) RPC probe (transport via SDK)
+        try {
+          const { data: rp, error: re } = await supabase.rpc("ping");
+          console.log("rpcProbe", { ok: rp === "ok", err: !!re, code: re?.code, msg: re?.message });
+        } catch (e) {
+          console.log("rpcProbe:fail", String(e?.message || e));
+        }
+
+        // 4) Table probe (policies may apply, but should NOT be network error)
+        try {
+          const { data, error, status } = await supabase.from("profiles").select("id").limit(1);
+          console.log("profilesProbe", { status, hasData: !!(data && data.length), err: !!error, code: error?.code, msg: error?.message });
+        } catch (e) {
+          console.log("profilesProbe:fail", String(e?.message || e));
+        }
+
+        console.log("probe:end");
+      } catch (e) {
+        console.log("probeError", String(e?.message || e));
+      }
+    })();
+
+    return () => {
+      offAuthLinking?.();
+      sub.remove();
+    };
+  }, []);
 
   // Preload assets
   useEffect(() => {
@@ -81,6 +158,9 @@ export default function App() {
 
   // Check user state using server-side RPC for better mobile UX
   const checkUserState = async (userId) => {
+    // Temporary: silence during probe
+    if (__DEV__ && globalThis.__PROBES_ONLY__) return;
+
     // Prevent multiple simultaneous calls
     if (isCheckingUserState) {
       console.log('Already checking user state, skipping...');

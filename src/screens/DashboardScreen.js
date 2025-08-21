@@ -225,7 +225,7 @@ const DashboardScreen = ({ navigation }) => {
         fetchUserStats().finally(() => setIsRefreshing(false)); // Only refresh stats, not workout patterns
       }
       return () => {}; // cleanup function
-    }, [isRefreshing])
+    }, [])
   );
 
   const handleLogout = async () => {

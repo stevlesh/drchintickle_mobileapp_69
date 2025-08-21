@@ -26,3 +26,7 @@ screenshots/
 *.tar.gz
 DrChinTickle.app/
 *.app/
+
+# EAS local build archives
+build-*.tar.gz
+
