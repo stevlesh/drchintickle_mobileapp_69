@@ -49,7 +49,7 @@
       "favicon": "./src/assets/icons/sessions.png",
       "bundler": "metro"
     },
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": "exposdk:53.0.0",
     "owner": "stevlesh",
     "extra": {
       "eas": {
