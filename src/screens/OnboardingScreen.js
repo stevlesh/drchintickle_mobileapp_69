@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Polyline, Path, Rect, Line, Polygon } from 'react-native-svg';
 import { supabase } from '../lib/supabase';
 import { colors, textStyles } from '../theme/typography';
@@ -9,8 +8,6 @@ import BackgroundContainer from '../components/BackgroundContainer';
 import GlassCard from '../components/GlassCard';
 import NeonButton from '../components/NeonButton';
 import NeonHeader from '../components/NeonHeader';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 const OnboardingScreen = ({ navigation }) => {
   const [currentScreen, setCurrentScreen] = useState(1);
@@ -35,21 +32,12 @@ const OnboardingScreen = ({ navigation }) => {
 
       if (error) throw error;
 
-      // Get the user's current workout number from their profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('current_workout_in_cycle')
-        .eq('id', session.user.id)
-        .single();
-      
-      const workoutNum = profile?.current_workout_in_cycle || 1;
-      
-      // Navigate based on ability
-      if (canDoEightPullups) {
-        navigation.replace('PreWorkout', { workoutNum });
-      } else {
-        navigation.replace('Dashboard');
-      }
+      // Use navigation.reset() to navigate to Main screen
+      // This works because Main is now declared in the navigator tree
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Main' }],
+      });
     } catch (error) {
       console.error('Error completing onboarding:', error);
       console.error('Error saving onboarding progress. Please try again.');
@@ -239,7 +227,7 @@ const OnboardingScreen = ({ navigation }) => {
           "15 minutes EVERY DAY beats 90 minutes sometimes"
         </Text>
         <Text style={[textStyles.smallText, styles.philosophyText]}>
-          Daily consistency > sporadic intensity.
+          Daily consistency beats sporadic intensity.
         </Text>
       </GlassCard>
 

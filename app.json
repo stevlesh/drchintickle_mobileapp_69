@@ -56,6 +56,9 @@
         "projectId": "c872a76c-b7c9-47cc-8b5e-b7a44933a57b"
       }
     },
+    "env": {
+      "EXPO_PUBLIC_USE_SERVER_PLANS": "true"
+    },
     "updates": {
       "url": "https://u.expo.dev/c872a76c-b7c9-47cc-8b5e-b7a44933a57b"
     }

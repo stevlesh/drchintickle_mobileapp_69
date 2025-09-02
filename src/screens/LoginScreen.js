@@ -137,9 +137,33 @@ export default function LoginScreen() {
     };
   }, [loading])
 
+  // Network probe to diagnose connectivity issues
+  async function netProbe() {
+    try {
+      const g = await fetch('https://www.google.com', { method: 'HEAD' });
+      console.log('NET google HEAD ok?', g.ok);
+    } catch (e) { console.log('NET google failed', e); }
+
+    try {
+      const h = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/auth/v1/health`);
+      console.log('SUPA /auth/v1/health', h.status);
+    } catch (e) { console.log('SUPA health failed', e); }
+
+    try {
+      const r = await fetch(`${process.env.EXPO_PUBLIC_SUPABASE_URL}/rest/v1/`, {
+        method: 'HEAD',
+        headers: { apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY }
+      });
+      console.log('SUPA /rest/v1 HEAD', r.status);
+    } catch (e) { console.log('SUPA rest HEAD failed', e); }
+  }
+
   async function signInWithEmail() {
-    setLoading(true)
+    // Don't use setLoading(true) here - that triggers OAuth polling
     console.log('Signing in with:', email)
+    
+    // Run network probe before sign-in attempt
+    await netProbe();
     
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email,
@@ -153,7 +177,7 @@ export default function LoginScreen() {
       // Just log the error - no alerts
       console.error('Signin failed:', error.message)
     }
-    setLoading(false)
+    // No setLoading(false) needed since we didn't set it to true
   }
 
   async function signUpWithEmail() {

@@ -10,29 +10,31 @@ import { getQuoteWithAuthor, getQuote } from '../utils/quotes'
 import { supabase } from '../lib/supabase';
 
 export default function WorkoutScreen({ navigation, route }) {
-  // Log route params for debugging
-  console.log('WorkoutScreen received params:', route?.params);
-  
   // Accept params from navigation
   const {
     workoutNum = 2,
     totalWorkouts = 8,
     workoutType = 'PYRAMID',
     pattern = 'PYRAMID',
-    setBreakdown = [8, 9, 10, 11, 12, 10, 8, 6],
+    setBreakdown,
     timerStart = null,
     targetReps = 0,
     isMaxTestDay = false,
   } = route?.params || {};
   
+  // Remove fallback array - must use server data
+  if (!setBreakdown && !isMaxTestDay) {
+    console.error('❌ WorkoutScreen: No setBreakdown provided for non-max test workout');
+  }
+  
   // Calculate total reps if not provided
   const calculatedTargetReps = targetReps || (setBreakdown ? setBreakdown.reduce((a, b) => a + b, 0) : 0);
 
   const [currentSet, setCurrentSet] = useState(1);
-  const [totalSets] = useState(isMaxTestDay ? 1 : (setBreakdown.length || 8));
+  const [totalSets] = useState(isMaxTestDay ? 1 : (setBreakdown?.length || 8));
   const [repsCompleted, setRepsCompleted] = useState([]);
   const [pageState, setPageState] = useState('active_set'); // 'active_set', 'resting', 'summary'
-  const targetRepsArr = isMaxTestDay ? [0] : setBreakdown || [];
+  const targetRepsArr = isMaxTestDay ? [0] : (setBreakdown || []);
   const [currentReps, setCurrentReps] = useState(isMaxTestDay ? 0 : (targetRepsArr[0] || 0)); // For max test day, start at 0; otherwise, default to set 1 target
   const [restTimeLeft, setRestTimeLeft] = useState(120); // 120 seconds rest (2:00 minutes)
   const [workoutDuration, setWorkoutDuration] = useState(0); // Workout duration in seconds
@@ -44,6 +46,11 @@ export default function WorkoutScreen({ navigation, route }) {
   const workoutTimerRef = useRef(null);
   const workoutStartTimeRef = useRef(Date.now());
   const appStateRef = useRef(AppState.currentState);
+
+  // Log route params for debugging (dev only, minimal deps)
+  useEffect(() => {
+    if (__DEV__) console.log('WorkoutScreen params:', { workoutNum, workoutType });
+  }, [workoutNum, workoutType]);
 
   // Initialize workout timer
   useEffect(() => {
@@ -190,6 +197,13 @@ export default function WorkoutScreen({ navigation, route }) {
       const completedReps = repsCompleted.reduce((a, b) => a + b, 0);
       const durationMinutes = Math.round(finalDurationSeconds / 60);
       
+      // Get profile for later use in pre-generation
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('current_max_pullups, cycle_start_max')
+        .eq('id', user.id)
+        .single();
+
       // For max test day, update user's current max
       if (isMaxTestDay) {
         await supabase.from('profiles').update({
@@ -208,23 +222,35 @@ export default function WorkoutScreen({ navigation, route }) {
         duration_minutes: durationMinutes,
       });
       
-      // Advance to next workout in cycle and clear stored pattern
-      let nextWorkoutNum = workoutNum + 1;
-      if (nextWorkoutNum > totalWorkouts) nextWorkoutNum = 1;
-      await supabase.from('profiles').update({
-        current_workout_in_cycle: nextWorkoutNum,
-        next_workout_pattern: null, // Clear the stored pattern so a new one is generated
-        updated_at: new Date().toISOString()
-      }).eq('id', user.id);
+      // Use atomic progression via complete_workout RPC
+      const { data: nextState, error: progressError } = await supabase
+        .rpc('complete_workout', { _user_id: user.id });
+      
+      if (progressError) {
+        console.error('❌ Error progressing workout:', progressError);
+      } else {
+        const newCycle = nextState?.[0]?.cycle_num;
+        const newWorkout = nextState?.[0]?.workout_num;
+        console.log(`✅ Advanced to cycle ${newCycle}, workout ${newWorkout}`);
+        
+        // Pre-generate next workout plan and cache it
+        try {
+          const { generateWorkout } = await import('../utils/workoutApi');
+          const nextPlan = await generateWorkout({
+            userId: user.id,
+            cycleNum: newCycle,
+            workoutNum: newWorkout,
+            userMax: profile?.current_max_pullups,
+            cycleStartMax: profile?.cycle_start_max
+          });
+          console.log('🎯 Pre-generated next workout plan:', nextPlan.patternName || 'Max Test');
+        } catch (pregenError) {
+          console.warn('⚠️ Failed to pre-generate next workout:', pregenError);
+        }
+      }
     }
-    // Navigate to Home and signal that data should be refreshed
+    // Navigate to Home only - Dashboard will refresh on focus
     navigation.navigate('Home');
-    
-    // Also signal WorkoutStack that it should refresh PreWorkout data if user navigates back
-    navigation.navigate('WorkoutStack', {
-      screen: 'PreWorkout',
-      params: { shouldRefresh: true }
-    });
   }
 
   const handleBackToDashboard = () => {

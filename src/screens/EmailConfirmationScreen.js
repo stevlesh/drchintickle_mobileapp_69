@@ -26,13 +26,18 @@ const EmailConfirmationScreen = ({ navigation }) => {
           
           if (!error && data?.email_confirmed) {
             console.log('Email confirmed! Navigating to next screen...');
-            // Navigate based on server response
+            // Navigate based on server response using reset
             if (data.needs_onboarding) {
-              navigation.replace('Onboarding');
-            } else if (data.can_do_eight_pullups) {
-              navigation.replace('PreWorkout', { workoutNum: data.current_workout_in_cycle });
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Onboarding' }],
+              });
             } else {
-              navigation.replace('Dashboard');
+              // Always go to home page after email confirmation
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Main' }],
+              });
             }
           }
         }
@@ -86,7 +91,10 @@ const EmailConfirmationScreen = ({ navigation }) => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    navigation.replace('Login');
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Login' }],
+    });
   };
 
   return (

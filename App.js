@@ -4,7 +4,7 @@
 // export { TestNetwork as default };
 
 import "react-native-url-polyfill/auto"; // keep once (if already present, don't duplicate)
-import React, { useState, useEffect } from 'react' // Updated
+import React, { useState, useEffect, useRef } from 'react' // Updated
 import { View, ActivityIndicator, Text, StyleSheet, Platform, AppState } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
@@ -20,8 +20,12 @@ import { Asset } from 'expo-asset'
 import { supabase } from './src/lib/supabase'
 import { colors } from './src/theme/typography'
 import { installAuthLinking } from './src/auth/supabaseAuth'
+import { navigationRef, resetTo, flushPendingNavigation } from './src/navigation/navigationRef'
+import { recoverFromStaleToken } from './src/utils/authRecovery'
+import { clearWorkoutPlanCache } from './src/utils/workoutApi'
 
 // Import screens
+import LoadingScreen from './src/screens/LoadingScreen'
 import LoginScreen from './src/screens/LoginScreen'
 import OnboardingScreen from './src/screens/OnboardingScreen'
 import EmailConfirmationScreen from './src/screens/EmailConfirmationScreen'
@@ -29,18 +33,73 @@ import TabNavigator from './src/navigation/TabNavigator'
 
 const RootStack = createNativeStackNavigator()
 
+// Global auth routing function
+let rfstInflight = false;
+async function routeFromServerTruth() {
+  console.log('🎯 RFST called inflight=', rfstInflight);
+  if (rfstInflight) return; 
+  rfstInflight = true;
+  const t = Date.now(); const tag = m => console.log('[RFST', Date.now()-t+'ms]', m);
+  try {
+    tag('start');
+    const sessRes = await supabase.auth.getSession();
+    tag('getSession has=' + !!sessRes.data?.session + ' err=' + !!sessRes.error);
+    if (!sessRes.data?.session) { tag('-> Login'); resetTo('Login'); return; }
+
+    // 2) Email confirmation — handle network errors correctly
+    const userRes = await supabase.auth.getUser();
+    if (userRes.error) {
+      // Network or auth failure ≠ unconfirmed email. Fail safe to Login.
+      console.warn('[RFST] getUser error:', userRes.error.message || userRes.error);
+      resetTo('Login');
+      return;
+    }
+    const user = userRes.data?.user;
+    const confirmed = !!user?.email_confirmed_at;
+    tag('getUser confirmed=' + confirmed);
+    if (!confirmed) {
+      tag('-> EmailConfirmation');
+      resetTo('EmailConfirmation');
+      return;
+    }
+
+    // 3) Profile / onboarding — handle errors explicitly
+    const profRes = await supabase
+      .from('profiles')
+      .select('has_completed_onboarding')
+      .eq('id', sessRes.data.session.user.id)
+      .maybeSingle();
+
+    if (profRes.error) {
+      console.warn('[RFST] profiles fetch error:', profRes.error.message || profRes.error);
+      // Network error ≠ "needs onboarding". Fail safe to Login.
+      tag('prof error -> Login');
+      resetTo('Login');
+      return;
+    }
+
+    tag('profiles err=' + !!profRes.error + ' done=' + !!profRes.data?.has_completed_onboarding);
+
+    tag(profRes.data?.has_completed_onboarding ? '-> Main' : '-> Onboarding');
+    resetTo(profRes.data?.has_completed_onboarding ? 'Main' : 'Onboarding');
+  } catch (e) {
+    console.log('[RFST] catch', e?.message || e);
+    try { await supabase.auth.stopAutoRefresh(); } catch {}
+    try { await supabase.auth.signOut({ scope: 'local' }); } catch {}
+    resetTo('Login');
+  } finally {
+    rfstInflight = false;
+  }
+}
+
 export default function App() {
   // Temporary: silence other data fetches during probe
   // if (__DEV__) {
   //   globalThis.__PROBES_ONLY__ = true;
   // }
 
-  const [session, setSession] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [assetsLoaded, setAssetsLoaded] = useState(false)
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true) // Temporarily disabled onboarding
-  const [checkingOnboarding, setCheckingOnboarding] = useState(false) // Disabled user state checking
-  const [emailConfirmed, setEmailConfirmed] = useState(true) // Default to true to avoid flash
+  const [splashTimeout, setSplashTimeout] = useState(false)
 
   // Load Miami Vice fonts - with web fallback
   let [fontsLoaded] = useFonts({
@@ -58,74 +117,17 @@ export default function App() {
   // For web, don't wait for fonts to load
   const shouldWaitForFonts = Platform.OS !== 'web'
 
-  // AppState token refresh management + probes + auth linking
+  // Set splash timeout to 400ms max
   useEffect(() => {
-    // Install auth deep linking handler
-    const offAuthLinking = installAuthLinking();
-    
-    // Token refresh on foreground/background
-    const sub = AppState.addEventListener("change", (s) => {
-      if (s === "active") supabase.auth.startAutoRefresh();
-      else supabase.auth.stopAutoRefresh();
-    });
+    const timer = setTimeout(() => setSplashTimeout(true), 400);
+    return () => clearTimeout(timer);
+  }, []);
 
-    // Surgical diagnostic probes
-    (async () => {
-      try {
-        console.log("probe:start");
-
-        const url = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
-        const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-        const urlTrim = url.trim();
-        const urlOk = /^https:\/\/.+\.supabase\.co$/.test(urlTrim);
-        console.log("env ok", !!urlTrim, !!anon, "urlOk", urlOk, "sameAfterTrim", url === urlTrim);
-
-        // 0) Device internet sanity
-        try {
-          const r0 = await fetch("https://www.google.com/generate_204");
-          console.log("net:google", r0.status); // expect 204
-        } catch (e) {
-          console.log("net:google:fail", String(e?.message || e));
-        }
-
-        // 1) Supabase health (with apikey)
-        try {
-          const r1 = await fetch(`${urlTrim}/auth/v1/health`, { headers: { apikey: anon } });
-          console.log("net:authHealth", r1.status); // expect 200
-        } catch (e) {
-          console.log("net:authHealth:fail", String(e?.message || e));
-        }
-
-        // 2) Local session read (no network)
-        const s = await supabase.auth.getSession();
-        console.log("hasToken", !!s.data.session?.access_token);
-
-        // 3) RPC probe (transport via SDK)
-        try {
-          const { data: rp, error: re } = await supabase.rpc("ping");
-          console.log("rpcProbe", { ok: rp === "ok", err: !!re, code: re?.code, msg: re?.message });
-        } catch (e) {
-          console.log("rpcProbe:fail", String(e?.message || e));
-        }
-
-        // 4) Table probe (policies may apply, but should NOT be network error)
-        try {
-          const { data, error, status } = await supabase.from("profiles").select("id").limit(1);
-          console.log("profilesProbe", { status, hasData: !!(data && data.length), err: !!error, code: error?.code, msg: error?.message });
-        } catch (e) {
-          console.log("profilesProbe:fail", String(e?.message || e));
-        }
-
-        console.log("probe:end");
-      } catch (e) {
-        console.log("probeError", String(e?.message || e));
-      }
-    })();
-
-    return () => {
-      offAuthLinking?.();
-      sub.remove();
-    };
+  // BOOT: kick once (may queue); subscribe to auth events
+  useEffect(() => {
+    routeFromServerTruth();
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt,_s)=>{ routeFromServerTruth(); });
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   // Preload assets
@@ -153,173 +155,18 @@ export default function App() {
     loadAssets();
   }, []);
 
-  // Add flag to prevent multiple simultaneous calls
-  const [isCheckingUserState, setIsCheckingUserState] = useState(false);
-
-  // Check user state using server-side RPC for better mobile UX
-  const checkUserState = async (userId) => {
-    // Temporary: silence during probe
-    if (__DEV__ && globalThis.__PROBES_ONLY__) return;
-
-    // Prevent multiple simultaneous calls
-    if (isCheckingUserState) {
-      console.log('Already checking user state, skipping...');
-      return;
-    }
-
-    setIsCheckingUserState(true);
-    
-    try {
-      console.log('Checking user state for:', userId);
-      
-      // Try RPC first, but handle failures gracefully
-      let userState = null;
-      let rpcError = null;
-
-      try {
-        const rpcResult = await Promise.race([
-          supabase.rpc('get_user_app_state', { user_id: userId }),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('RPC timeout')), 5000)
-          )
-        ]);
-        
-        if (rpcResult.error) {
-          rpcError = rpcResult.error;
-          console.log('RPC returned error:', rpcError.message);
-        } else {
-          userState = rpcResult.data;
-          console.log('RPC success:', userState);
-        }
-      } catch (rpcErr) {
-        rpcError = rpcErr;
-        console.log('RPC failed:', rpcErr.message);
-      }
-
-      if (userState && !rpcError) {
-        // RPC success - use the returned data
-        setEmailConfirmed(userState.email_confirmed !== false);
-        
-        if (!userState.email_confirmed) {
-          console.log('Email not confirmed yet');
-          setHasCompletedOnboarding(false);
-        } else {
-          setHasCompletedOnboarding(!userState.needs_onboarding);
-        }
-      } else {
-        // RPC failed - fallback to direct profile queries (original logic)
-        console.log('Using fallback profile queries...');
-        
-        try {
-          // Check email confirmation from auth user  
-          const { data: { user } } = await supabase.auth.getUser();
-          const emailConfirmed = user?.email_confirmed_at != null;
-          setEmailConfirmed(emailConfirmed);
-          
-          if (!emailConfirmed) {
-            console.log('Email not confirmed (fallback check)');
-            setHasCompletedOnboarding(false);
-          } else {
-            // Check onboarding status from profile
-            console.log('Fetching profile for user:', userId);
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('has_completed_onboarding')
-              .eq('id', userId)
-              .single();
-            
-            if (profileError) {
-              console.error('Profile fetch error in fallback:', profileError);
-              // If profile doesn't exist, assume onboarding complete for development
-              console.log('Assuming onboarding complete due to profile error');
-              setHasCompletedOnboarding(true);
-            } else {
-              console.log('Profile found in fallback:', profile);
-              setHasCompletedOnboarding(profile?.has_completed_onboarding || false);
-            }
-          }
-        } catch (fallbackError) {
-          console.error('Fallback queries also failed:', fallbackError);
-          // Last resort - assume complete for development
-          setEmailConfirmed(true);
-          setHasCompletedOnboarding(true);
-          console.log('Using last resort defaults');
-        }
-      }
-    } catch (error) {
-      console.error('Error in checkUserState:', error);
-      setHasCompletedOnboarding(false);
-    } finally {
-      console.log('Setting checkingOnboarding to false');
-      setCheckingOnboarding(false);
-      setIsCheckingUserState(false);
-    }
-  };
-
-  useEffect(() => {
-    // Check if user is logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', session);
-      setSession(session)
-      if (session?.user?.id) {
-        checkUserState(session.user.id);
-      } else {
-        setCheckingOnboarding(false);
-      }
-      setLoading(false)
-    })
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log('Auth state changed:', _event, session);
-      
-      setSession(session);
-      
-      if (session?.user?.id) {
-        // Only check user state for specific events that matter
-        if (_event === 'SIGNED_UP') {
-          console.log('New user signup detected, waiting for profile creation');
-          // Small delay to ensure database trigger has created the profile
-          setTimeout(() => {
-            checkUserState(session.user.id);
-          }, 1500); // Increased timeout slightly
-        } else if (_event === 'SIGNED_IN') {
-          checkUserState(session.user.id);
-        }
-        // Skip user state check for TOKEN_REFRESHED and other events
-      } else {
-        setCheckingOnboarding(false);
-        setHasCompletedOnboarding(false);
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  // Add timeout to prevent infinite loading
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (checkingOnboarding) {
-        console.log('Onboarding check timeout - forcing completion');
-        setCheckingOnboarding(false);
-        setHasCompletedOnboarding(false);
-      }
-    }, 5000); // 5 second timeout for better mobile UX
-
-    return () => clearTimeout(timeout);
-  }, [checkingOnboarding]);
+  // Show navigator after 400ms max, even if assets/fonts aren't ready
+  const showNavigator = splashTimeout || ((!shouldWaitForFonts || fontsLoaded) && assetsLoaded);
 
   console.log('App state:', { 
-    loading, 
     fontsLoaded, 
     shouldWaitForFonts, 
-    assetsLoaded, 
-    session: !!session, 
-    checkingOnboarding, 
-    hasCompletedOnboarding 
+    assetsLoaded,
+    splashTimeout,
+    showNavigator
   });
 
-  if (loading || (shouldWaitForFonts && !fontsLoaded) || !assetsLoaded || (session && checkingOnboarding)) {
+  if (!showNavigator) {
     return (
       <LinearGradient
         colors={[
@@ -342,19 +189,29 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <View style={styles.appContainer}>
-        <NavigationContainer>
-          <RootStack.Navigator screenOptions={{ headerShown: false }}>
-            {/* Auth Flow */}
-            {!session ? (
-              <RootStack.Screen name="Login" component={LoginScreen} />
-            ) : !emailConfirmed ? (
-              <RootStack.Screen name="EmailConfirmation" component={EmailConfirmationScreen} />
-            ) : !hasCompletedOnboarding ? (
-              <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
-            ) : (
-              /* Main App - Tab Navigator */
-              <RootStack.Screen name="Main" component={TabNavigator} />
-            )}
+        <NavigationContainer 
+          ref={navigationRef}
+          onReady={() => {
+            console.log('Navigation container ready');
+            flushPendingNavigation();
+            routeFromServerTruth();
+            setTimeout(() => {
+              const cur = navigationRef.getCurrentRoute()?.name;
+              console.log('[SAFE] after 2000ms route =', cur);
+              if (cur === 'Loading') resetTo('Login');
+            }, 2000);
+          }}
+        >
+          <RootStack.Navigator 
+            screenOptions={{ headerShown: false }}
+            initialRouteName="Loading"
+          >
+            {/* Declare all routes unconditionally to prevent navigation errors */}
+            <RootStack.Screen name="Loading" component={LoadingScreen} />
+            <RootStack.Screen name="Login" component={LoginScreen} />
+            <RootStack.Screen name="EmailConfirmation" component={EmailConfirmationScreen} />
+            <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
+            <RootStack.Screen name="Main" component={TabNavigator} />
           </RootStack.Navigator>
         </NavigationContainer>
       </View>

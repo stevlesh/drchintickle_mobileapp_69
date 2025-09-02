@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -79,9 +79,15 @@ const PreWorkoutScreen = ({ route, navigation }) => {
     }
   };
   
-  // Fetch data on mount
+  // Prevent double invocation (React StrictMode, network retries, etc.)
+  const didRunRef = useRef(false);
+  
+  // Fetch data on mount with double-invocation guard
   useEffect(() => {
+    if (didRunRef.current) return; // Guard against StrictMode double invoke
+    didRunRef.current = true;
     fetchWorkoutData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   // Only refetch on focus if route params indicate data should be refreshed

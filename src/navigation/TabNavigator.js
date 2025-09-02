@@ -15,6 +15,7 @@ import WorkoutScreen from '../screens/WorkoutScreen';
 import StatsScreen from '../screens/StatsScreen';
 
 import { colors } from '../theme/typography';
+import { useGateMain } from '../hooks/useGateMain';
 
 const Tab = createBottomTabNavigator();
 const WorkoutStack = createNativeStackNavigator();
@@ -48,6 +49,9 @@ const TabBarBackground = () => (
 // Tab Navigator
 const TabNavigator = () => {
   const insets = useSafeAreaInsets();
+  
+  // Guard to ensure user is authorized to be in Main
+  useGateMain();
 
   // Handle tab press with haptics
   const handleTabPress = () => {

@@ -30,3 +30,4 @@ DrChinTickle.app/
 # EAS local build archives
 build-*.tar.gz
 
+.env

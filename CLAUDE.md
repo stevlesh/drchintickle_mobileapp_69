@@ -88,12 +88,29 @@ npm run db:reset                     # Reset database
 - **Components**: Glass morphism cards, neon glows, gradient backgrounds
 
 ## Development Setup
+
+### Current State (as of Aug 27, 2025)
+- **iOS Simulator**: iPhone 16 Pro with EAS development build installed
+- **Build**: Using `build-1755775966353.tar.gz` from Aug 21
+- **Important**: DO NOT use `npx expo run:ios` (would use native folders incorrectly)
+- See `DEV_SETUP_STATUS.md` for detailed current state
+
+### Quick Start (if already set up)
+```bash
+# Open simulator and start dev server
+open -a Simulator
+npx expo start --dev-client
+# Press 'i' if not auto-connecting
+```
+
+### Initial Setup (for new environment)
 1. Install dependencies: `npm install`
 2. Set up environment variables in `.env`
 3. Configure Supabase project
 4. Run database migrations
 5. Build dev client: `eas build --platform ios --profile development-simulator --local`
-6. Start development server: `npx expo start --dev-client`
+6. Extract and install: `tar -xvf build-*.tar.gz && xcrun simctl install booted DrChinTickle.app`
+7. Start development server: `npx expo start --dev-client`
 
 ## Testing Key Scenarios
 - New user signup and onboarding flow  
