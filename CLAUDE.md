@@ -87,9 +87,30 @@ npm run db:reset                     # Reset database
 - **Fonts**: Pacifico (headers), Righteous (quotes), Orbitron (data), Monoton (accent)
 - **Components**: Glass morphism cards, neon glows, gradient backgrounds
 
+## Recent Updates & Fixes
+
+### Major Architecture & Bug Fixes (Sep 2, 2025)
+- **Fixed**: Palm tree visual not updating in real-time after workout completion
+- **Fixed**: "Today's Workout" card refresh using `fetchCompleteData()` instead of `fetchUserStats()`
+- **Fixed**: Max test baseline popup appearing repeatedly for existing users
+- **Fixed**: Navigation going to workout tab instead of home after completion
+- **Added**: New `src/utils/baseline.js` utility with object parameters pattern
+- **Added**: Request deduplication in `src/utils/workoutApi.js` to prevent duplicate Edge Function calls
+- **Deployed**: Edge Function v7 with server-side contract guarantees (workout 1 = max_test, workouts 2-8 = never max_test)
+- **Pattern**: Object parameters over positional arguments for safety
+- **Pattern**: Server-side contract guarantees to prevent data type leaks
+- **Updated**: EAS "gym-today" branch with all latest fixes
+
+### Authentication & Navigation Improvements (Aug 27, 2025)
+- **Fixed**: Auth recovery system using `recoverFromStaleToken()` in App.js
+- **Fixed**: Navigation reset after onboarding completion
+- **Added**: LoadingScreen with proper Miami Vice styling
+- **Enhanced**: Error handling for "Invalid Refresh Token" scenarios
+- **Pattern**: Clean separation of auth state from navigation state
+
 ## Development Setup
 
-### Current State (as of Aug 27, 2025)
+### Current State (as of Sep 2, 2025)
 - **iOS Simulator**: iPhone 16 Pro with EAS development build installed
 - **Build**: Using `build-1755775966353.tar.gz` from Aug 21
 - **Important**: DO NOT use `npx expo run:ios` (would use native folders incorrectly)
@@ -120,17 +141,30 @@ npx expo start --dev-client
 - Database trigger functionality
 
 ## Troubleshooting
+
+### Common Issues & Solutions
 - **Git issues**: Clean repo initialization may be needed
 - **EAS builds**: Requires logged-in EAS account
 - **iOS simulator**: Use development-simulator build profile
 - **Database**: Check RPC function permissions and triggers
 
+### Recent Lessons Learned (Sep 2, 2025)
+- **Always check terminal logs**: Don't guess at errors; read actual error messages from logs
+- **Use object parameters**: Avoid positional arguments that can cause ReferenceError with undefined variables
+- **Server-side guarantees**: Implement contract guarantees in Edge Functions to prevent data type leaks
+- **Request deduplication**: Prevent duplicate API calls with promise caching using tuple keys
+- **Complete data refresh**: Use `fetchCompleteData()` not just `fetchUserStats()` for full UI updates
+- **EAS Updates**: Use branch-specific updates like "gym-today" for targeted deployments
+
 ## Important Files
 - `app.json`: Expo configuration and build settings
 - `eas.json`: Build profiles and deployment configuration  
 - `src/utils/workoutEngine.js`: Core workout algorithm
-- `supabase/`: Database schema and edge functions
+- `src/utils/baseline.js`: Baseline popup logic with object parameters pattern
+- `src/utils/workoutApi.js`: API calls with request deduplication
+- `supabase/`: Database schema and edge functions (v7 deployed with contract guarantees)
 - `src/screens/WorkoutScreen.js`: Main workout interface
+- `src/screens/DashboardScreen.js`: Main dashboard with refresh fixes
 
 ## Environment Setup
 - Node.js with npm

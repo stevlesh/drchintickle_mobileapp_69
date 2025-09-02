@@ -1,5 +1,5 @@
 # Dr. ChinTickle Development Setup Status
-Last Updated: August 27, 2025
+Last Updated: September 2, 2025
 
 ## Current Development Environment
 
@@ -34,9 +34,11 @@ Regular JavaScript/React changes do NOT require new builds.
 
 ## Project State
 - **Git Branch**: main (clean, up to date with origin)
-- **Last Stable Commit**: 740795b "Update build configuration for stable Expo SDK 53"
+- **Last Major Update**: Sep 2, 2025 - Architecture fixes and Edge Function v7 deployment
+- **EAS Updates**: "gym-today" branch deployed with all latest fixes
 - **Expo SDK**: 53.0.20 (minor update to 53.0.22 available but not critical)
 - **Runtime**: Using EAS builds with development client
+- **Edge Functions**: v7 deployed with server-side contract guarantees
 
 ## Workout Logic Confirmed Working
 - Volume calculation: 2.6x to 3.0x multiplier progression
@@ -45,10 +47,12 @@ Regular JavaScript/React changes do NOT require new builds.
 - Beginner/advanced adaptations planned but not yet implemented
 
 ## Key Files for Reference
-- `CLAUDE.md` - Main project context and instructions
+- `CLAUDE.md` - Main project context and instructions (updated with recent fixes)
 - `DEV_SETUP_STATUS.md` - This file, current setup state
 - `eas.json` - Build configurations
 - `src/utils/workoutEngine.js` - Core workout algorithm
+- `src/utils/baseline.js` - NEW: Baseline popup logic with object parameters
+- `src/utils/workoutApi.js` - NEW: Request deduplication for Edge Functions
 
 ## Quick Start for New Session
 If starting fresh after closing Cursor/Claude:
