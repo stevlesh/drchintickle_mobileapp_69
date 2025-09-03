@@ -1,153 +1,133 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Polyline, Path, Rect, Line, Polygon } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Svg, { Circle, Polyline, Path } from 'react-native-svg';
+import { Timer, Sunglasses, ArrowRight, Cheers, HourglassMedium, ProjectorScreenChart, ClipboardText, Target, Lightning, Barbell } from 'phosphor-react-native';
 import { supabase } from '../lib/supabase';
 import { colors, textStyles } from '../theme/typography';
 import BackgroundContainer from '../components/BackgroundContainer';
 import GlassCard from '../components/GlassCard';
-import NeonButton from '../components/NeonButton';
 import NeonHeader from '../components/NeonHeader';
+
+const { width: screenWidth } = Dimensions.get('window');
+
+// Outline number component with neon glow
+const OutlineNumber = ({ number, color = colors.electricCyan }) => {
+  return (
+    <Text style={{
+      fontFamily: 'GemunuLibre_700Bold',
+      fontSize: 48,
+      color: color,
+      textShadowColor: color,
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 10,
+      textAlign: 'center',
+    }}>
+      {number}
+    </Text>
+  );
+};
+
+// Custom Flamingo icon component
+const FlamingoIcon = ({ size = 60, color = colors.hotPink }) => {
+  return (
+    <View style={{ 
+      shadowColor: color,
+      shadowOpacity: 0.8,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 0 },
+    }}>
+      <Svg width={size} height={size} viewBox="0 0 512 512">
+        <Path 
+          fill="none" 
+          stroke={color}
+          strokeWidth="24"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M411.674 19.82q-.399 0-.799.026c-11.862.793-66.118 4.177-57.514 78.935c4.69 40.745 35.686 134.777 8.723 137.942c-10.085 1.183-21.482-50.259-107.617-49.145c-79.045 1.022-105.178 46.044-128.602 76.057c-40.892 18.126-62.973 26.188-73.426 62.861c20.703-3.015 38.183-20.096 69.045-27.537c49.206 12.785 111.833 46.992 184.914 4.223c49.809-12.752 105.363-19.901 108.301-82.514c-3.586-43.57-16.011-82.308-28.492-120.379c-4.426-13.5-11.253-30.65 6.52-37.7c8.378 4.004 15.912 8.46 32.648 5.88c14.265 5.75 19.893 35.658 30.184 35.07c1.182-14.901 6.732-29.728 2.328-44.764c-1.932-6.594-18.959-13.676-28.616-20.435c-1.59-9.443-9.344-18.484-17.597-18.52M198.26 338.213l-37.028 55.744l73.073 39.361v60.684h17.998v-50.988l76.674 41.3l8.537-15.843l-85.211-45.9v-81.919c-6.043.983-12.069 1.465-17.998 1.54v70.683l-47.159-25.402l30.592-46.057c-6.806-.705-13.347-1.832-19.478-3.203"
+        />
+      </Svg>
+    </View>
+  );
+};
+
+// Arrow component
+const NeonArrow = ({ color = colors.electricCyan }) => {
+  return (
+    <View style={{ 
+      shadowColor: color,
+      shadowOpacity: 0.8,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 0 },
+    }}>
+      <ArrowRight size={32} weight="bold" color={color} />
+    </View>
+  );
+};
 
 const OnboardingScreen = ({ navigation }) => {
   const [currentScreen, setCurrentScreen] = useState(1);
-  const [canDoEightPullups, setCanDoEightPullups] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Complete onboarding using direct database operations
+  // Secure onboarding completion with proper error handling
   const completeOnboarding = async () => {
+    if (isSubmitting) return; // Prevent double-tap
+    setIsSubmitting(true);
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No session found');
-
-      // Update profile directly in database
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          has_completed_onboarding: true,
-          onboarding_completed_at: new Date().toISOString(),
-          can_do_eight_pullups: canDoEightPullups,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', session.user.id);
-
+      // Call secure RPC function (no user_id needed - server derives from JWT)
+      const { data, error } = await supabase.rpc('complete_onboarding', {
+        user_can_do_eight_pullups: null // Don't set assessment - handle elsewhere
+      });
+      
       if (error) throw error;
+      
+      // Verify RPC succeeded (returns array)
+      const ok = Array.isArray(data) && data[0]?.success === true;
+      if (!ok) {
+        throw new Error('Onboarding completion failed');
+      }
 
-      // Use navigation.reset() to navigate to Main screen
-      // This works because Main is now declared in the navigator tree
+      // Cache locally to prevent flicker on app restart
+      await AsyncStorage.setItem('has_completed_onboarding', 'true');
+
+      // Navigate to main app
       navigation.reset({
         index: 0,
         routes: [{ name: 'Main' }],
       });
+      
     } catch (error) {
-      console.error('Error completing onboarding:', error);
-      console.error('Error saving onboarding progress. Please try again.');
-    }
-  };
-
-  const NeonIcon = ({ type, color = colors.brightPink }) => {
-    const iconSize = 20;
-    
-    switch (type) {
-      case 'clock':
-        return (
-          <Svg width={iconSize} height={iconSize} style={styles.neonIcon}>
-            <Circle cx="10" cy="10" r="8" fill="none" stroke={color} strokeWidth="2"/>
-            <Polyline points="10,6 10,10 13,13" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
-          </Svg>
-        );
-      case 'diamond':
-        return (
-          <Svg width={iconSize} height={iconSize} style={styles.neonIcon}>
-            <Path d="M10 2 L18 10 L10 18 L2 10 Z" fill="none" stroke={color} strokeWidth="2"/>
-            <Circle cx="10" cy="10" r="2" fill="none" stroke={color} strokeWidth="1.5"/>
-          </Svg>
-        );
-      case 'box':
-        return (
-          <Svg width={iconSize} height={iconSize} style={styles.neonIcon}>
-            <Rect x="2" y="2" width="16" height="16" fill="none" stroke={color} strokeWidth="2" rx="2"/>
-            <Circle cx="10" cy="10" r="3" fill="none" stroke={color} strokeWidth="1.5"/>
-          </Svg>
-        );
-      case 'circle-dot':
-        return (
-          <Svg width={iconSize} height={iconSize} style={styles.neonIcon}>
-            <Circle cx="10" cy="10" r="8" fill="none" stroke={color} strokeWidth="2"/>
-            <Circle cx="10" cy="10" r="2" fill={color}/>
-          </Svg>
-        );
-      case 'star':
-        return (
-          <Svg width={iconSize} height={iconSize} style={styles.neonIcon}>
-            <Polygon points="10,2 12,8 18,8 13,12 15,18 10,14 5,18 7,12 2,8 8,8" fill="none" stroke={color} strokeWidth="2"/>
-          </Svg>
-        );
-      case 'trophy':
-        return (
-          <Svg width={iconSize} height={iconSize} style={styles.neonIcon}>
-            <Circle cx="10" cy="6" r="4" fill="none" stroke={color} strokeWidth="2"/>
-            <Path d="M6 14 L14 14 M8 17 L12 17" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-          </Svg>
-        );
-      case 'barbell':
-        return (
-          <Svg width={iconSize} height={iconSize} style={styles.neonIcon}>
-            <Rect x="2" y="8" width="16" height="8" fill="none" stroke={color} strokeWidth="2" rx="2"/>
-            <Circle cx="6" cy="6" r="2" fill="none" stroke={color} strokeWidth="2"/>
-            <Circle cx="14" cy="6" r="2" fill="none" stroke={color} strokeWidth="2"/>
-          </Svg>
-        );
-      case 'timer':
-        return (
-          <Svg width={iconSize} height={iconSize} style={styles.neonIcon}>
-            <Circle cx="10" cy="10" r="8" fill="none" stroke={color} strokeWidth="2"/>
-            <Polyline points="10,4 10,10 14,14" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-          </Svg>
-        );
-      case 'x':
-        return (
-          <Svg width={iconSize} height={iconSize} style={styles.neonIcon}>
-            <Rect x="3" y="3" width="14" height="14" fill="none" stroke={color} strokeWidth="2" rx="2"/>
-            <Line x1="7" y1="7" x2="13" y2="13" stroke={color} strokeWidth="2"/>
-            <Line x1="7" y1="13" x2="13" y2="7" stroke={color} strokeWidth="2"/>
-          </Svg>
-        );
-      case 'rocket':
-        return (
-          <Svg width={iconSize} height={iconSize} style={styles.neonIcon}>
-            <Path d="M10 2 L12 8 L10 12 L8 8 Z" fill="none" stroke={color} strokeWidth="2"/>
-            <Path d="M10 12 L12 18 L10 16 L8 18 Z" fill="none" stroke={color} strokeWidth="1.5"/>
-          </Svg>
-        );
-      default:
-        return null;
+      console.error('Onboarding error:', error);
+      // TODO: Show user-friendly toast message with retry option
+      setIsSubmitting(false);
     }
   };
 
   const Screen1 = () => (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
       <NeonHeader 
-        subtitle="FINALLY, A FITNESS APP THAT GETS IT" 
         showPalmTrees={true}
         titleSize={42}
-        subtitleSize={14}
       />
       
       <GlassCard borderColor={colors.hotPink} glowColor={colors.hotPink} style={styles.card}>
         <Text style={[textStyles.subTitle, styles.cardTitle, { color: colors.neonYellow }]}>
-          MOST FITNESS APPS ARE BROKEN
+          FITNESS APPS SUCK
         </Text>
         <View style={styles.listContainer}>
           <View style={styles.listItem}>
-            <NeonIcon type="clock" color={colors.hotPink} />
+            <HourglassMedium size={44} weight="regular" color={colors.hotPink} />
             <Text style={[textStyles.infoLabel, styles.listText]}>60+ minute workouts</Text>
           </View>
           <View style={styles.listItem}>
-            <NeonIcon type="diamond" color={colors.purple} />
+            <ProjectorScreenChart size={44} weight="regular" color={colors.purple} />
             <Text style={[textStyles.infoLabel, styles.listText]}>Overcomplicated plans</Text>
           </View>
           <View style={styles.listItem}>
-            <NeonIcon type="box" color={colors.orange} />
+            <ClipboardText size={44} weight="regular" color={colors.orange} />
             <Text style={[textStyles.infoLabel, styles.listText]}>Track everything</Text>
           </View>
         </View>
@@ -155,196 +135,127 @@ const OnboardingScreen = ({ navigation }) => {
 
       <GlassCard borderColor={colors.electricCyan} glowColor={colors.electricCyan} style={styles.card}>
         <Text style={[textStyles.subTitle, styles.cardTitle, { color: colors.electricCyan }]}>
-          DR. CHINTICKLE FIXES THIS
+          DR. CHINTICKLE FIXES IT
         </Text>
         <View style={styles.listContainer}>
           <View style={styles.listItem}>
-            <NeonIcon type="circle-dot" color={colors.electricCyan} />
+            <Target size={44} weight="regular" color={colors.electricCyan} />
             <Text style={[textStyles.accentLabel, styles.listText, styles.boldText]}>ONE GOAL: 69 pull-ups</Text>
           </View>
           <View style={styles.listItem}>
-            <NeonIcon type="star" color={colors.neonYellow} />
+            <Lightning size={44} weight="regular" color={colors.neonYellow} />
             <Text style={[textStyles.accentLabel, styles.listText, styles.boldText]}>15 minutes EVERY DAY</Text>
           </View>
           <View style={styles.listItem}>
-            <NeonIcon type="trophy" color={colors.green} />
+            <Barbell size={44} weight="regular" color={colors.hotPink} />
             <Text style={[textStyles.accentLabel, styles.listText, styles.boldText]}>Zero complexity</Text>
           </View>
         </View>
       </GlassCard>
 
-      <Text style={[textStyles.accentText, styles.legendTitle]}>THE LEGEND OF 69</Text>
-      <Text style={[textStyles.quote, styles.legendText]}>
-        Yes, it's ridiculous. Yes, you can do it.
-      </Text>
-
-      <NeonButton 
-        title="THIS SOUNDS AMAZING" 
+      {/* Cheers button to continue */}
+      <TouchableOpacity 
         onPress={() => setCurrentScreen(2)} 
-        style={styles.fullWidthButton}
-      />
+        style={styles.cheersButtonContainer}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={[colors.hotPink, colors.brightPink, colors.purple]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cheersButton}
+        >
+          <Cheers size={40} weight="regular" color={colors.white} />
+        </LinearGradient>
+      </TouchableOpacity>
     </ScrollView>
   );
 
   const Screen2 = () => (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContentNew}>
       <NeonHeader 
-        subtitle="HERE'S HOW IT WORKS" 
         showPalmTrees={true}
-        titleSize={42}
-        subtitleSize={14}
+        titleSize={46}
+        style={styles.headerSpaced}
       />
 
-      <GlassCard borderColor={colors.neonYellow} glowColor={colors.neonYellow} style={styles.card}>
-        <Text style={[textStyles.subTitle, styles.cardTitle, { color: colors.neonYellow }]}>
-          THE DR. CHINTICKLE SYSTEM
-        </Text>
-        <View style={styles.systemContainer}>
-          <View style={styles.systemItem}>
-            <NeonIcon type="barbell" color={colors.hotPink} />
-            <Text style={[textStyles.accentLabel, styles.systemText]}>8 SETS</Text>
-          </View>
-          <View style={styles.systemItem}>
-            <NeonIcon type="timer" color={colors.lightBlue} />
-            <Text style={[textStyles.accentLabel, styles.systemText]}>2 MIN REST</Text>
-          </View>
-          <View style={styles.systemItem}>
-            <NeonIcon type="x" color={colors.green} />
-            <Text style={[textStyles.accentLabel, styles.systemText]}>15 MIN TOTAL</Text>
-          </View>
-          <View style={styles.systemItem}>
-            <NeonIcon type="rocket" color={colors.gold} />
-            <Text style={[textStyles.accentLabel, styles.systemText]}>EVERY DAY</Text>
-          </View>
-        </View>
-      </GlassCard>
-
-      <GlassCard borderColor={colors.purple} glowColor={colors.purple} style={styles.card}>
-        <Text style={[textStyles.subTitle, styles.cardTitle, { color: colors.purple }]}>
-          THE PHILOSOPHY
-        </Text>
-        <Text style={[textStyles.quote, styles.philosophyQuote]}>
-          "15 minutes EVERY DAY beats 90 minutes sometimes"
-        </Text>
-        <Text style={[textStyles.smallText, styles.philosophyText]}>
-          Daily consistency beats sporadic intensity.
-        </Text>
-      </GlassCard>
-
-      <Text style={[textStyles.accentText, styles.assessmentPrompt]}>
-        NOW, LET'S SEE WHERE YOU'RE AT...
-      </Text>
-
-      <GlassCard borderColor={colors.electricCyan} glowColor={colors.electricCyan} style={styles.card}>
-        <Text style={[textStyles.subTitle, styles.questionText]}>
-          Can you do 8 clean pull-ups right now?
-        </Text>
-        <Text style={[textStyles.smallText, styles.questionSubtext]}>
-          (Be honest - full hang at bottom, chin over bar at top)
-        </Text>
+      {/* System Overview - Horizontal Flow */}
+      <GlassCard borderColor={colors.electricCyan} glowColor={colors.electricCyan} style={styles.systemCard}>
         
-        <View style={styles.buttonRow}>
-          <NeonButton
-            title="YES, EASILY"
-            onPress={() => {
-              setCanDoEightPullups(true);
-              setCurrentScreen(3);
-            }}
-            variant="primary"
-            style={styles.halfButton}
-          />
-          <NeonButton
-            title="NO / BARELY"
-            onPress={() => {
-              setCanDoEightPullups(false);
-              setCurrentScreen(3);
-            }}
-            variant="secondary"
-            style={styles.halfButton}
-          />
+        {/* Clean icon row layout */}
+        <View style={styles.iconRowHorizontal}>
+          <View style={styles.iconColumn}>
+            <FlamingoIcon size={80} color={colors.hotPink} />
+            <View style={styles.numberContainer}>
+              <OutlineNumber number="8" color={colors.electricCyan} />
+            </View>
+            <Text style={styles.label}>SETS</Text>
+          </View>
+          
+          <View style={styles.arrowContainer}>
+            <NeonArrow color={colors.electricCyan} />
+          </View>
+          
+          <View style={styles.iconColumn}>
+            <View style={styles.iconWithGlow}>
+              <Timer size={80} weight="regular" color={colors.hotPink} />
+            </View>
+            <View style={styles.numberContainer}>
+              <OutlineNumber number="2" color={colors.electricCyan} />
+            </View>
+            <Text style={styles.label}>MIN REST</Text>
+          </View>
+          
+          <View style={styles.arrowContainer}>
+            <NeonArrow color={colors.electricCyan} />
+          </View>
+          
+          <View style={styles.iconColumn}>
+            <View style={styles.iconWithGlow}>
+              <Sunglasses size={80} weight="regular" color={colors.hotPink} />
+            </View>
+            <View style={styles.numberContainer}>
+              <OutlineNumber number="15" color={colors.electricCyan} />
+            </View>
+            <Text style={styles.label}>MIN TOTAL</Text>
+          </View>
+        </View>
+        
+        {/* Daily commitment below */}
+        <View style={styles.dailyCommitment}>
+          <Text style={styles.dailyText}>EVERY SINGLE DAY</Text>
+          <Text style={styles.dailySubtext}>Daily consistency {'>'} sporadic intensity</Text>
         </View>
       </GlassCard>
-    </ScrollView>
-  );
 
-  const Screen3 = () => (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-      <NeonHeader 
-        subtitle="YOUR PERSONALIZED PROGRAM" 
-        showPalmTrees={true}
-        titleSize={42}
-        subtitleSize={14}
-      />
-
-      {canDoEightPullups ? (
-        <>
-          <GlassCard borderColor={colors.green} glowColor={colors.green} style={styles.card}>
-            <Text style={[textStyles.subTitle, styles.cardTitle, { color: colors.green }]}>
-              STANDARD PROGRAM
-            </Text>
-            <Text style={[textStyles.infoLabel, styles.programText]}>
-              Welcome to the big leagues!{'\n\n'}
-              We'll start with a max test, then build you up to 69.
-            </Text>
-          </GlassCard>
-          
-          <Text style={[textStyles.accentText, styles.readyText]}>
-            Ready to find your max and start dominating?
-          </Text>
-
-          <NeonButton
-            title="START MAX TEST"
-            onPress={completeOnboarding}
-            style={styles.fullWidthButton}
-          />
-        </>
-      ) : (
-        <>
-          <GlassCard borderColor={colors.orange} glowColor={colors.orange} style={styles.card}>
-            <Text style={[textStyles.subTitle, styles.cardTitle, { color: colors.orange }]}>
-              COMING VERY SOON
-            </Text>
-            <Text style={[textStyles.infoLabel, styles.programText]}>
-              We're building something special for beginners.{'\n\n'}
-              The <Text style={styles.boldInline}>Assisted Program</Text> will get you to 8+ pull-ups, 
-              then graduate to the full 69-rep program!
-            </Text>
-          </GlassCard>
-
-          <Text style={[textStyles.accentText, styles.readyText]}>
-            We'll notify you the moment it's ready!
-          </Text>
-
-          <NeonButton
-            title="CONTINUE TO APP"
-            onPress={completeOnboarding}
-            style={styles.fullWidthButton}
-          />
-        </>
-      )}
-
-      <GlassCard borderColor={colors.hotPink} glowColor={colors.hotPink} style={styles.card}>
-        <Text style={[textStyles.subTitle, styles.cardTitle, { color: colors.hotPink }]}>
-          REMEMBER
-        </Text>
-        <Text style={[textStyles.infoLabel, styles.rememberText]}>
-          15 minutes. Every day.{'\n'}
-          No exceptions.
-        </Text>
-      </GlassCard>
-
-      <Text style={[textStyles.quote, styles.finalQuote]}>
-        "The only workout you'll regret is the one you didn't do."
-      </Text>
+      {/* Completion button */}
+      <TouchableOpacity 
+        onPress={completeOnboarding} 
+        style={[
+          styles.cheersButtonContainer,
+          isSubmitting && { opacity: 0.5 } // Visual feedback during submission
+        ]}
+        activeOpacity={0.8}
+        disabled={isSubmitting} // Prevent interaction during submission
+      >
+        <LinearGradient
+          colors={[colors.hotPink, colors.brightPink, colors.purple]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cheersButton}
+        >
+          <Cheers size={40} weight="regular" color={colors.white} />
+        </LinearGradient>
+      </TouchableOpacity>
     </ScrollView>
   );
 
   return (
     <BackgroundContainer>
       <SafeAreaView style={styles.container}>
-        {/* Navigation dots */}
+        {/* Navigation dots - only 2 screens */}
         <View style={styles.dotsContainer}>
-          {[1, 2, 3].map((screen) => (
+          {[1, 2].map((screen) => (
             <TouchableOpacity
               key={screen}
               onPress={() => setCurrentScreen(screen)}
@@ -360,7 +271,6 @@ const OnboardingScreen = ({ navigation }) => {
         <View style={styles.content}>
           {currentScreen === 1 && <Screen1 />}
           {currentScreen === 2 && <Screen2 />}
-          {currentScreen === 3 && <Screen3 />}
         </View>
       </SafeAreaView>
     </BackgroundContainer>
@@ -376,6 +286,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  scrollContentNew: {
+    paddingHorizontal: 32,
     paddingBottom: 40,
   },
   dotsContainer: {
@@ -401,146 +315,123 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 20,
+    paddingTop: 10,
+    paddingBottom: 10,
+    paddingHorizontal: 8,
   },
   cardTitle: {
-    fontSize: 22,
-    marginBottom: 16,
+    fontSize: 18,
+    fontFamily: 'Orbitron_700Bold',
+    marginBottom: 14,
     textAlign: 'center',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
   },
   listContainer: {
-    gap: 12,
+    gap: 8,
   },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
   },
   listText: {
     ...textStyles.bodyText,
-    fontSize: 16,
+    fontSize: 14,
     flex: 1,
   },
   boldText: {
     fontWeight: '700',
   },
-  legendTitle: {
-    ...textStyles.heading,
-    fontSize: 24,
-    color: colors.neonYellow,
-    textAlign: 'center',
-    marginTop: 24,
-    marginBottom: 12,
-    textShadowColor: colors.neonYellow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
+  // Screen 2 specific styles
+  headerSpaced: {
+    marginBottom: 40,
   },
-  legendText: {
-    ...textStyles.bodyText,
-    fontSize: 16,
-    textAlign: 'center',
+  systemCard: {
     marginBottom: 32,
-    fontStyle: 'italic',
+    paddingVertical: 20,
+    paddingHorizontal: 12,
   },
-  systemContainer: {
-    gap: 16,
-  },
-  systemItem: {
+  iconRowHorizontal: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+    paddingHorizontal: 0,
+  },
+  iconColumn: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-  },
-  systemText: {
-    ...textStyles.buttonText,
-    fontSize: 18,
-  },
-  philosophyQuote: {
-    ...textStyles.heading,
-    fontSize: 20,
-    color: colors.neonYellow,
-    textAlign: 'center',
-    marginBottom: 16,
-    fontStyle: 'italic',
-    textShadowColor: colors.neonYellow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 6,
-  },
-  philosophyText: {
-    ...textStyles.bodyText,
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  assessmentPrompt: {
-    ...textStyles.buttonText,
-    fontSize: 18,
-    color: colors.electricCyan,
-    textAlign: 'center',
-    marginVertical: 24,
-  },
-  questionText: {
-    ...textStyles.heading,
-    fontSize: 22,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  questionSubtext: {
-    ...textStyles.bodyText,
-    fontSize: 14,
-    color: colors.lightGray,
-    textAlign: 'center',
-    marginBottom: 24,
-    fontStyle: 'italic',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  halfButton: {
     flex: 1,
   },
-  fullWidthButton: {
-    marginTop: 20,
-    width: '100%',
+  arrowContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 106,
+    paddingBottom: 66,
+    marginHorizontal: 8,
   },
-  programText: {
-    ...textStyles.bodyText,
-    fontSize: 16,
+  iconWithGlow: {
+    shadowColor: colors.hotPink,
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  numberContainer: {
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  label: {
+    fontSize: 12,
+    fontFamily: 'Orbitron_700Bold',
+    color: colors.electricCyan,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
     textAlign: 'center',
+    textShadowColor: colors.electricCyan,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
+    flexShrink: 1,
+    maxWidth: 80,
   },
-  boldInline: {
-    fontWeight: '700',
+  dailyCommitment: {
+    alignItems: 'center',
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 217, 255, 0.3)',
   },
-  readyText: {
-    ...textStyles.buttonText,
+  dailyText: {
     fontSize: 18,
+    fontFamily: 'Orbitron_700Bold',
     color: colors.neonYellow,
-    textAlign: 'center',
-    marginVertical: 16,
     textShadowColor: colors.neonYellow,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 6,
+    marginBottom: 4,
   },
-  rememberText: {
-    ...textStyles.heading,
-    fontSize: 18,
-    textAlign: 'center',
-  },
-  finalQuote: {
-    ...textStyles.bodyText,
-    fontSize: 16,
-    color: colors.neonYellow,
-    textAlign: 'center',
+  dailySubtext: {
+    fontSize: 14,
+    fontFamily: 'Righteous_400Regular',
+    color: colors.lightGray,
     fontStyle: 'italic',
-    marginTop: 20,
-    textShadowColor: colors.neonYellow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
   },
-  neonIcon: {
-    shadowColor: colors.brightPink,
+  cheersButtonContainer: {
+    marginTop: 16,
+    alignSelf: 'center',
+    borderRadius: 40,
+    overflow: 'hidden',
+    shadowColor: colors.hotPink,
     shadowOpacity: 0.8,
-    shadowRadius: 4,
+    shadowRadius: 25,
     shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  cheersButton: {
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 40,
   },
 });
 

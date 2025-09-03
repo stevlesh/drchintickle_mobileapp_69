@@ -31,3 +31,8 @@ DrChinTickle.app/
 build-*.tar.gz
 
 .env
+
+# supabase CLI noise
+supabase/temp/
+supabase/.temp/
+supabase/.branches/
