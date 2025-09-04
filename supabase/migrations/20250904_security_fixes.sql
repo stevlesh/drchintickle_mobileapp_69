@@ -74,32 +74,34 @@ set search_path = public
 as $$
 declare
   uid uuid := auth.uid();
-  cur_cycle int; 
-  cur_w int;
+  cur_cycle int;
+  cur_workout int;
 begin
-  if uid is null then 
-    raise exception 'unauthenticated'; 
+  if uid is null then
+    raise exception 'unauthenticated';
   end if;
 
   select p.cycle_num, p.current_workout_in_cycle
-    into cur_cycle, cur_w
+    into cur_cycle, cur_workout
   from public.profiles p
   where p.id = uid
   for update;
 
-  if cur_w >= 8 then
+  if cur_workout >= 8 then
     update public.profiles
       set cycle_num = cur_cycle + 1,
           current_workout_in_cycle = 1,
           updated_at = now()
       where id = uid
-      returning cycle_num, current_workout_in_cycle into cycle_num, workout_num;
+      returning cycle_num, current_workout_in_cycle
+      into cycle_num, workout_num;
   else
     update public.profiles
-      set current_workout_in_cycle = cur_w + 1,
+      set current_workout_in_cycle = cur_workout + 1,
           updated_at = now()
       where id = uid
-      returning cycle_num, current_workout_in_cycle into cycle_num, workout_num;
+      returning cycle_num, current_workout_in_cycle
+      into cycle_num, workout_num;
   end if;
 
   return next;
