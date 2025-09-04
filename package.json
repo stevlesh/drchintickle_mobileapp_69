@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "security:check": "! (rg 'rpc\\([\"\\x27]get_user_(app_state|onboarding_status)[\"\\x27].*\\{.*user_id' src --type js || rg 'rpc\\([\"\\x27]complete_workout[\"\\x27].*\\{.*_user_id' src --type js)"
   },
   "dependencies": {
     "@expo-google-fonts/gemunu-libre": "^0.4.0",

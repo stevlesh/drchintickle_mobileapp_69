@@ -22,7 +22,7 @@ const EmailConfirmationScreen = ({ navigation }) => {
         if (session?.user?.id) {
           // Use server-side RPC to check complete state
           const { data, error } = await supabase
-            .rpc('get_user_app_state', { user_id: session.user.id });
+            .rpc('get_user_app_state');
           
           if (!error && data?.email_confirmed) {
             console.log('Email confirmed! Navigating to next screen...');

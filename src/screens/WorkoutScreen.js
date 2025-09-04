@@ -224,7 +224,7 @@ export default function WorkoutScreen({ navigation, route }) {
       
       // Use atomic progression via complete_workout RPC
       const { data: nextState, error: progressError } = await supabase
-        .rpc('complete_workout', { _user_id: user.id });
+        .rpc('complete_workout');
       
       if (progressError) {
         console.error('❌ Error progressing workout:', progressError);
