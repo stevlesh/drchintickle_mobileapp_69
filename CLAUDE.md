@@ -174,6 +174,17 @@ npx expo start --dev-client
 
 This context helps maintain consistency with established patterns, understand the workout algorithm, and effectively debug issues across the full-stack application.
 
+## 🧠 Claude Code Quick Start Context
+
+When starting a new conversation, Claude should read the `.claude/` directory for complete project context:
+
+- **`.claude/README.md`** - Quick start guide for new sessions
+- **`.claude/CURRENT_SERVER_ARCHITECTURE.md`** - Existing server implementation audit  
+- **`.claude/VIBE_CODING_GUIDE.md`** - User's coding style and RPC documentation
+- **`.claude/SERVER_FIRST_ARCHITECTURE.md`** - Architecture principles and patterns
+
+**Key phrase**: When user says "get up to speed on my project", read all files in `.claude/` directory.
+
 When asked to design UI & frontend interface
 When asked to design UI & frontend interface
 # Role
