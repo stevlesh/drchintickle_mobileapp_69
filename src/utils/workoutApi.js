@@ -19,6 +19,16 @@ const SAFE_WORKOUT = {
   reason: 'fallback'
 };
 
+// Client-side shape validation (shape-only, trusts server for totals)
+function clientShapeValidate({ setBreakdown, workoutNum, maxPullups, pattern, requiresMaxTest }) {
+  if (workoutNum === 1 || requiresMaxTest === true || pattern === 'Max Test') {
+    return Array.isArray(setBreakdown) ? setBreakdown.length === 0 : true;
+  }
+  if (!Array.isArray(setBreakdown) || setBreakdown.length !== 8) return false;
+  const cap = Math.max(1, Math.floor(0.6 * Math.max(1, Math.floor(maxPullups || 1))));
+  return setBreakdown.every(s => Number.isInteger(s) && s >= 1 && s <= cap);
+}
+
 // Log sanitization anomalies for debugging
 function logSanitizeAnomalies(d) {
   if (!__DEV__) return;
@@ -191,8 +201,27 @@ async function generateWorkoutServerFirst(userId, cycleNum, workoutNum, userMax,
     const planSource = data?.reason === 'existing' ? 'workouts_table' : 'edge_function';
     console.log(`PLAN_SOURCE=${planSource} { cycleNum: ${cycleNum}, workoutNum: ${workoutNum} }`);
     
-    // Write-through to AsyncStorage (no TTL)
-    await cacheWorkout(userId, cycleNum, workoutNum, sanitizedData);
+    // Client-side shape validation before caching
+    const okReason = ['generated', 'existing', 'contract_fixed'].includes(sanitizedData.reason);
+    const isValid = clientShapeValidate({
+      setBreakdown: sanitizedData.setBreakdown,
+      workoutNum,
+      maxPullups: userMax,
+      pattern: sanitizedData.pattern,
+      requiresMaxTest: sanitizedData.requiresMaxTest
+    });
+
+    if (okReason && isValid) {
+      // Write-through to AsyncStorage (no TTL)
+      await cacheWorkout(userId, cycleNum, workoutNum, sanitizedData);
+    } else {
+      console.warn('⚠️ Skipping cache for invalid/fallback workout:', { 
+        okReason, 
+        isValid, 
+        reason: sanitizedData.reason,
+        pattern: sanitizedData.pattern
+      });
+    }
     
     return sanitizedData;
   })()

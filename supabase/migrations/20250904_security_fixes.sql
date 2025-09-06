@@ -81,6 +81,7 @@ begin
     raise exception 'unauthenticated';
   end if;
 
+  -- Lock the caller's profile row
   select p.cycle_num, p.current_workout_in_cycle
     into cur_cycle, cur_workout
   from public.profiles p
@@ -88,20 +89,20 @@ begin
   for update;
 
   if cur_workout >= 8 then
-    update public.profiles
+    update public.profiles as p
       set cycle_num = cur_cycle + 1,
           current_workout_in_cycle = 1,
           updated_at = now()
-      where id = uid
-      returning cycle_num, current_workout_in_cycle
-      into cycle_num, workout_num;
+      where p.id = uid
+      returning p.cycle_num, p.current_workout_in_cycle
+        into cycle_num, workout_num;
   else
-    update public.profiles
+    update public.profiles as p
       set current_workout_in_cycle = cur_workout + 1,
           updated_at = now()
-      where id = uid
-      returning cycle_num, current_workout_in_cycle
-      into cycle_num, workout_num;
+      where p.id = uid
+      returning p.cycle_num, p.current_workout_in_cycle
+        into cycle_num, workout_num;
   end if;
 
   return next;
