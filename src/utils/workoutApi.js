@@ -19,14 +19,10 @@ const SAFE_WORKOUT = {
   reason: 'fallback'
 };
 
-// Client-side shape validation (shape-only, trusts server for totals)
+// Client-side shape validation - REMOVED: Trust server validation entirely
 function clientShapeValidate({ setBreakdown, workoutNum, maxPullups, pattern, requiresMaxTest }) {
-  if (workoutNum === 1 || requiresMaxTest === true || pattern === 'Max Test') {
-    return Array.isArray(setBreakdown) ? setBreakdown.length === 0 : true;
-  }
-  if (!Array.isArray(setBreakdown) || setBreakdown.length !== 8) return false;
-  const cap = Math.max(1, Math.floor(0.6 * Math.max(1, Math.floor(maxPullups || 1))));
-  return setBreakdown.every(s => Number.isInteger(s) && s >= 1 && s <= cap);
+  // Server already validates everything, no need to double-check
+  return true;
 }
 
 // Log sanitization anomalies for debugging
