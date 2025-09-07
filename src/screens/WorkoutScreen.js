@@ -8,6 +8,7 @@ import NeonIcon from '../components/NeonIcon'
 import { colors, textStyles } from '../theme/typography'
 import { getQuoteWithAuthor, getQuote } from '../utils/quotes'
 import { supabase } from '../lib/supabase';
+import { bus } from '../lib/bus';
 
 export default function WorkoutScreen({ navigation, route }) {
   // Accept params from navigation
@@ -249,8 +250,18 @@ export default function WorkoutScreen({ navigation, route }) {
         }
       }
     }
-    // Navigate to Home only - Dashboard will refresh on focus
+    
+    // Reset WorkoutStack to PreWorkout screen, then navigate to Home
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'PreWorkout' }]
+    });
     navigation.navigate('Home');
+    
+    // Then emit workout completion event after navigation to avoid updating unmounted component
+    setTimeout(() => {
+      bus.emit('workout:completed', { at: Date.now() });
+    }, 100);
   }
 
   const handleBackToDashboard = () => {

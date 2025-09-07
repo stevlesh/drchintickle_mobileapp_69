@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import { generateWorkout } from '../utils/workoutApi';
 import QuoteChipMeasured from '../components/QuoteChipMeasured';
 import SetBreakdownCompactGrid from '../components/SetBreakdownCompactGrid';
+import { bus } from '../lib/bus';
 
 const PreWorkoutScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
@@ -32,12 +33,38 @@ const PreWorkoutScreen = ({ route, navigation }) => {
   const quote = getQuote('preWorkout');
   const nextSetIndex = 0;
   
-  // Fetch current workout data from database
-  const fetchWorkoutData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  // Refs for robust caching and race condition prevention
+  const inflightRef = useRef(false);
+  const lastFetchRef = useRef(0);
+  const sequenceRef = useRef(0);
+  const mountedRef = useRef(true);
+  
+  // Fetch workout data with TTL caching and race condition protection
+  const fetchWorkoutDataSafe = async (force = false) => {
+    const now = Date.now();
+    const TTL = 15 * 1000; // 15 seconds
+    
+    // Check TTL unless forced
+    if (!force && (now - lastFetchRef.current < TTL)) {
+      console.log('⏭️ PreWorkout: Skipping fetch, within TTL');
+      return;
+    }
+    
+    // Prevent duplicate calls
+    if (inflightRef.current) {
+      console.log('⏭️ PreWorkout: Skipping fetch, already in flight');
+      return;
+    }
+    
+    const sequence = ++sequenceRef.current;
+    inflightRef.current = true;
+    
+    console.log('🔄 PreWorkout: Fetching workout data (sequence:', sequence, ')');
     
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !mountedRef.current || sequence !== sequenceRef.current) return;
+      
       // Fetch profile
       const { data: profile } = await supabase
         .from('profiles')
@@ -45,7 +72,7 @@ const PreWorkoutScreen = ({ route, navigation }) => {
         .eq('id', user.id)
         .single();
       
-      if (!profile) return;
+      if (!profile || !mountedRef.current || sequence !== sequenceRef.current) return;
       
       // Determine next workout info
       const workoutNum = profile.current_workout_in_cycle || 1;
@@ -60,6 +87,8 @@ const PreWorkoutScreen = ({ route, navigation }) => {
         cycleStartMax,
       });
       
+      if (!mountedRef.current || sequence !== sequenceRef.current) return;
+      
       // Determine if this is a max test day
       const isMaxTestDay = workoutNum === 1;
       
@@ -73,40 +102,46 @@ const PreWorkoutScreen = ({ route, navigation }) => {
         isMaxTestDay,
         loading: false,
       });
+      
+      lastFetchRef.current = now;
+      
     } catch (error) {
       console.error('Error fetching workout data:', error);
-      setWorkoutData(prev => ({ ...prev, loading: false }));
+      if (mountedRef.current && sequence === sequenceRef.current) {
+        setWorkoutData(prev => ({ ...prev, loading: false }));
+      }
+    } finally {
+      if (sequence === sequenceRef.current) {
+        inflightRef.current = false;
+      }
     }
   };
   
-  // Prevent double invocation (React StrictMode, network retries, etc.)
-  const didRunRef = useRef(false);
-  
-  // Fetch data on mount with double-invocation guard
+  // Fetch on mount and setup cleanup
   useEffect(() => {
-    if (didRunRef.current) return; // Guard against StrictMode double invoke
-    didRunRef.current = true;
-    fetchWorkoutData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchWorkoutDataSafe();
+    
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
   
-  // Only refetch on focus if route params indicate data should be refreshed
+  // Listen for workout completion events for immediate invalidation
+  useEffect(() => {
+    const unsubscribe = bus.on('workout:completed', () => {
+      console.log('🔄 PreWorkout: Workout completed, forcing refresh');
+      fetchWorkoutDataSafe(true);
+    });
+    
+    return unsubscribe;
+  }, []);
+  
+  // Always fetch on focus (respects TTL unless forced)
   useFocusEffect(
     React.useCallback(() => {
-      // Check if we should refresh data based on route params
-      const shouldRefresh = route?.params?.shouldRefresh;
-      if (shouldRefresh) {
-        console.log('🔄 PreWorkout: Refreshing data due to route param');
-        fetchWorkoutData();
-        // Clear the refresh flag to prevent repeated refreshes
-        if (navigation.setParams) {
-          navigation.setParams({ shouldRefresh: false });
-        }
-      } else {
-        console.log('⏭️ PreWorkout: Skipping refresh, using cached data');
-      }
-      return () => {};
-    }, [route?.params?.shouldRefresh])
+      console.log('🔄 PreWorkout: Screen focused, checking for refresh');
+      fetchWorkoutDataSafe();
+    }, [])
   );
 
   const handleStartSession = () => {
