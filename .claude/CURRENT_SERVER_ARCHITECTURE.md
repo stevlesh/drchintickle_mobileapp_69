@@ -15,14 +15,16 @@
 - `handle_new_user()` - Auto-creates profiles via trigger
 
 ### Edge Functions (Sophisticated Logic)
-1. **generate-workout v8** (500+ lines)
+1. **generate-workout v14** (Current - Fixed Sep 2025)
    - Complete workout generation algorithm
    - 8 different rep patterns (Equal, Pyramid, etc.)
-   - Database-driven multipliers
+   - Database-driven multipliers (2.6 to 3.0 linear progression)
    - Cryptographic seeds for audit trails
    - Contract guarantees (W1=max test, W2-8=volume)
    - First-write-wins idempotency
    - Error recovery with safe fallbacks
+   - **v14 Fix**: Proper rep distribution (tracks currentTotal in deficit loop)
+   - **Cap**: 0.65 * userMax (not 0.6)
 
 2. **onboarding v5** 
    - Status checking
@@ -64,10 +66,11 @@ const { data } = await supabase.rpc('get_user_app_state');
 2. **Add dashboard super-RPC** - One call for entire dashboard state
 3. **Move remaining client calculations** - A few utilities still in `/utils/`
 
-### Current Client-Side Logic (Candidates for Migration):
-- `workoutEngine.js` - Already duplicated in Edge Function, could be removed
-- `baseline.js` - Simple popup logic, could stay client-side  
-- Some formatting utilities - Probably fine client-side
+### Current Client-Side Logic (Status as of Sep 2025):
+- `workoutEngine.js` - Still exists but Edge Function is source of truth
+- `workoutApi.js` - **Updated Sep 2025**: Removed client validation (trusts server completely)
+- `baseline.js` - Simple popup logic, stays client-side  
+- Some formatting utilities - Fine client-side
 
 ## Recommendations
 
