@@ -210,13 +210,6 @@ async function generateWorkoutServerFirst(userId, cycleNum, workoutNum, userMax,
     if (okReason && isValid) {
       // Write-through to AsyncStorage (no TTL)
       await cacheWorkout(userId, cycleNum, workoutNum, sanitizedData);
-    } else {
-      console.warn('⚠️ Skipping cache for invalid/fallback workout:', { 
-        okReason, 
-        isValid, 
-        reason: sanitizedData.reason,
-        pattern: sanitizedData.pattern
-      });
     }
     
     return sanitizedData;

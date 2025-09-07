@@ -15,15 +15,16 @@
 - `handle_new_user()` - Auto-creates profiles via trigger
 
 ### Edge Functions (Sophisticated Logic)
-1. **generate-workout v14** (Current - Fixed Sep 2025)
+1. **generate-workout v15** (Current - Fixed Sep 7, 2025)
    - Complete workout generation algorithm
    - 8 different rep patterns (Equal, Pyramid, etc.)
    - Database-driven multipliers (2.6 to 3.0 linear progression)
-   - Cryptographic seeds for audit trails
+   - Cryptographic seeds for audit trails (capped to PostgreSQL bigint range)
    - Contract guarantees (W1=max test, W2-8=volume)
    - First-write-wins idempotency
    - Error recovery with safe fallbacks
    - **v14 Fix**: Proper rep distribution (tracks currentTotal in deficit loop)
+   - **v15 Fix**: Seed generation capped to prevent bigint overflow errors
    - **Cap**: 0.65 * userMax (not 0.6)
 
 2. **onboarding v5** 

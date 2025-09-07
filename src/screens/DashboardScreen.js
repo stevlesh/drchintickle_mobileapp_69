@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ScrollView, Text, StyleSheet, View, TouchableOpacity, Modal } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { ScrollView, Text, StyleSheet, View, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { useFocusEffect } from '@react-navigation/native';
 import BackgroundContainer from '../components/BackgroundContainer';
 import ProgressRing from '../components/ProgressRing';
@@ -17,7 +16,6 @@ import WorkoutProgressTracker from '../components/WorkoutProgressTracker';
 import { getQuote, getDashboardQuote } from '../utils/quotes';
 import { generateWorkout } from '../utils/workoutApi';
 import QuoteChipMeasured from '../components/QuoteChipMeasured';
-import { shouldShowBaselinePopup } from '../utils/baseline';
 
 const DashboardScreen = ({ navigation }) => {
   const [userStats, setUserStats] = useState({
@@ -36,8 +34,6 @@ const DashboardScreen = ({ navigation }) => {
   });
   const [currentQuote, setCurrentQuote] = useState(null);
   const [quoteContext, setQuoteContext] = useState(null);
-  const [showMaxTestModal, setShowMaxTestModal] = useState(false);
-  const hasCheckedMaxTest = useRef(false);
 
   // Calculate streak based on workout dates
   const calculateStreak = (workoutDates) => {
@@ -207,21 +203,6 @@ const DashboardScreen = ({ navigation }) => {
         },
       });
       
-      // Check if baseline popup should be shown with proper gating and persistence
-      const tuple = { cycleNum: profile.cycle_num, workoutNum: profile.current_workout_in_cycle };
-      
-      const { show } = await shouldShowBaselinePopup({
-        userId: user.id,
-        cycleNum: tuple.cycleNum,
-        workoutNum: tuple.workoutNum,
-        currentMax: profile.current_max_pullups,
-        hasOnboarded: profile.has_completed_onboarding,
-      });
-
-      if (show && !hasCheckedMaxTest.current) {
-        hasCheckedMaxTest.current = true;
-        setShowMaxTestModal(true);
-      }
     } catch (error) {
       console.error('Error fetching complete data:', error);
     }
@@ -244,8 +225,6 @@ const DashboardScreen = ({ navigation }) => {
       if (!isRefreshing) {
         setIsRefreshing(true);
         fetchCompleteData().finally(() => setIsRefreshing(false)); // Refresh everything including workout patterns
-        // Reset baseline popup check to allow re-evaluation
-        hasCheckedMaxTest.current = false;
       }
       return () => {}; // cleanup function
     }, [])
@@ -278,58 +257,9 @@ const DashboardScreen = ({ navigation }) => {
   const isMaxTestDay = userStats.nextWorkout.workoutNum === 1 || userStats.nextWorkout.requiresMaxTest;
   const needsMaxTest = userStats.nextWorkout.requiresMaxTest;
 
-  // Handle start max test from modal
-  const handleStartMaxTest = () => {
-    setShowMaxTestModal(false);
-    navigation.navigate('WorkoutStack', {
-      screen: 'PreWorkout',
-      params: {
-        workoutNum: 1,
-        workoutType: 'MAX TEST',
-        pattern: 'MAX TEST',
-        setBreakdown: null,
-        targetReps: null,
-        totalWorkouts: 8,
-        isMaxTestDay: true,
-      }
-    });
-  };
 
   return (
     <BackgroundContainer>
-      {/* Max Test Required Modal */}
-      <Modal
-        visible={showMaxTestModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowMaxTestModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <BlurView intensity={80} style={styles.modalBlur}>
-            <GlassCard style={styles.modalCard}>
-              <Text style={styles.modalTitle}>BASELINE REQUIRED</Text>
-              <Text style={styles.modalText}>
-                Before we can create your personalized workout plan, we need to establish your current maximum pull-up capability.
-              </Text>
-              <Text style={styles.modalSubtext}>
-                This one-time test will determine your starting point and customize your entire training program.
-              </Text>
-              <NeonButton
-                title="START MAX TEST"
-                onPress={handleStartMaxTest}
-                variant="primary"
-                style={styles.modalButton}
-              />
-              <TouchableOpacity 
-                onPress={() => setShowMaxTestModal(false)}
-                style={styles.modalCloseButton}
-              >
-                <Text style={styles.modalCloseText}>LATER</Text>
-              </TouchableOpacity>
-            </GlassCard>
-          </BlurView>
-        </View>
-      </Modal>
 
       <ScrollView contentContainerStyle={styles.container}>
         {/* Header */}
@@ -376,7 +306,7 @@ const DashboardScreen = ({ navigation }) => {
         {/* CTA Button */}
         <NeonButton 
           title={needsMaxTest ? "COMPLETE MAX TEST FIRST" : "START NEXT WORKOUT"} 
-          onPress={needsMaxTest ? () => setShowMaxTestModal(true) : handleWorkoutPress}
+          onPress={handleWorkoutPress}
           variant={needsMaxTest ? "secondary" : "primary"}
           style={styles.ctaButton}
         />
@@ -456,63 +386,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
     paddingHorizontal: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalBlur: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalCard: {
-    margin: 24,
-    padding: 24,
-    maxWidth: 400,
-    alignItems: 'center',
-  },
-  modalTitle: {
-    ...textStyles.heading,
-    fontSize: 24,
-    color: colors.electricCyan,
-    marginBottom: 16,
-    textAlign: 'center',
-    textShadowColor: colors.electricCyan,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 15,
-  },
-  modalText: {
-    ...textStyles.bodyText,
-    fontSize: 16,
-    color: colors.white,
-    marginBottom: 12,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  modalSubtext: {
-    ...textStyles.smallText,
-    fontSize: 14,
-    color: colors.lightGray,
-    marginBottom: 24,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  modalButton: {
-    width: '100%',
-    marginBottom: 16,
-  },
-  modalCloseButton: {
-    padding: 12,
-  },
-  modalCloseText: {
-    ...textStyles.smallText,
-    fontSize: 14,
-    color: colors.mediumGray,
-    textAlign: 'center',
   },
 });
 

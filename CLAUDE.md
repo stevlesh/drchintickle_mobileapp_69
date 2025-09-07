@@ -89,17 +89,21 @@ npm run db:reset                     # Reset database
 
 ## Recent Updates & Fixes
 
+### Recent Fixes & Updates (Sep 7, 2025)
+- **Fixed**: Edge Function v15 bigint overflow error (seed generation capped to PostgreSQL range)
+- **Removed**: Baseline popup functionality entirely (user feedback - too annoying)
+- **Removed**: Cache warning messages from workoutApi.js (cleaner logs)
+- **Pattern**: Server-first error handling with proper fallbacks
+
 ### Major Architecture & Bug Fixes (Sep 2, 2025)
 - **Fixed**: Palm tree visual not updating in real-time after workout completion
 - **Fixed**: "Today's Workout" card refresh using `fetchCompleteData()` instead of `fetchUserStats()`
 - **Fixed**: Max test baseline popup appearing repeatedly for existing users
 - **Fixed**: Navigation going to workout tab instead of home after completion
-- **Added**: New `src/utils/baseline.js` utility with object parameters pattern
 - **Added**: Request deduplication in `src/utils/workoutApi.js` to prevent duplicate Edge Function calls
-- **Deployed**: Edge Function v7 with server-side contract guarantees (workout 1 = max_test, workouts 2-8 = never max_test)
+- **Deployed**: Edge Function v14 with server-side contract guarantees (workout 1 = max_test, workouts 2-8 = never max_test)
 - **Pattern**: Object parameters over positional arguments for safety
 - **Pattern**: Server-side contract guarantees to prevent data type leaks
-- **Updated**: EAS "gym-today" branch with all latest fixes
 
 ### Authentication & Navigation Improvements (Aug 27, 2025)
 - **Fixed**: Auth recovery system using `recoverFromStaleToken()` in App.js
@@ -148,13 +152,19 @@ npx expo start --dev-client
 - **iOS simulator**: Use development-simulator build profile
 - **Database**: Check RPC function permissions and triggers
 
-### Recent Lessons Learned (Sep 2, 2025)
+### Recent Lessons Learned (Sep 7, 2025)
+- **Deployed vs Local Code**: Only changes to deployed Edge Functions matter - local files are irrelevant
+- **PostgreSQL Limits**: BigUint64 values can exceed bigint column limits, need proper capping
+- **User Feedback**: Remove annoying UX (baseline popups) even if technically functional
+- **Clean Logging**: Remove unnecessary warnings to reduce log noise
+- **Version Management**: Keep docs updated with current deployed versions
+
+### Earlier Lessons Learned (Sep 2, 2025)
 - **Always check terminal logs**: Don't guess at errors; read actual error messages from logs
 - **Use object parameters**: Avoid positional arguments that can cause ReferenceError with undefined variables
 - **Server-side guarantees**: Implement contract guarantees in Edge Functions to prevent data type leaks
 - **Request deduplication**: Prevent duplicate API calls with promise caching using tuple keys
 - **Complete data refresh**: Use `fetchCompleteData()` not just `fetchUserStats()` for full UI updates
-- **EAS Updates**: Use branch-specific updates like "gym-today" for targeted deployments
 
 ## Important Files
 - `app.json`: Expo configuration and build settings
