@@ -35,9 +35,9 @@ const WorkoutProgressTracker = ({ currentWorkoutNum = 1, workoutType = 'MAX TEST
         style: styles.currentPalm
       };
     } else {
-      // Upcoming workouts - dimmed
+      // Upcoming workouts - hot pink outline for better visibility
       return {
-        color: colors.mediumGray,
+        color: colors.hotPink,
         weight: 'regular',
         style: styles.upcomingPalm
       };
@@ -65,8 +65,16 @@ const WorkoutProgressTracker = ({ currentWorkoutNum = 1, workoutType = 'MAX TEST
       </View>
 
       {/* Workout Info Text */}
-      <Text style={styles.workoutInfo}>
-        TODAY'S WORKOUT: {formattedWorkoutType}
+      <Text
+        style={styles.workoutInfo}
+        accessible
+        accessibilityLabel={`Today's workout ${formattedWorkoutType}, ${safeCurrentWorkout} of ${totalWorkouts}`}
+      >
+        {"TODAY'S WORKOUT "}
+        <Text style={{ color: colors.electricCyan }}>
+          [{safeCurrentWorkout}/{totalWorkouts}]
+        </Text>
+        {`: ${formattedWorkoutType}`}
       </Text>
     </View>
   );
@@ -74,15 +82,15 @@ const WorkoutProgressTracker = ({ currentWorkoutNum = 1, workoutType = 'MAX TEST
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
     paddingVertical: 16,
+    alignSelf: 'stretch',   // allow full-width inside parent
   },
   palmTreeRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between', // Distribute palm trees across full width
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
-    marginHorizontal: 8, // Match the stat card margins to align with card borders
+    paddingHorizontal: 24,        // narrower than cards to align with text edges
   },
   palmTree: {
     // Base palm tree styling
@@ -100,7 +108,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 6,
   },
   upcomingPalm: {
-    opacity: 0.3, // Dimmed upcoming workouts
+    opacity: 0.7, // More visible than before but still "upcoming"
   },
   workoutInfo: {
     fontFamily: 'IBMPlexMono_400Regular',

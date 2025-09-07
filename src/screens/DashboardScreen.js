@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
   trackerContainer: {
     marginTop: 8, // 8px top margin (8px + 8px = 16px total gap from stats)
     marginBottom: 8, // 8px bottom margin
-    paddingHorizontal: 4, // Match stats grid for alignment
+    // Remove paddingHorizontal so palm trees span full width of stat cards
   },
   ctaButton: {
     marginTop: 8, // 8px top margin (8px + 8px = 16px total gap from panel)
