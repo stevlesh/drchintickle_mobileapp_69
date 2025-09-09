@@ -7,9 +7,11 @@ import ProgressRing from '../components/ProgressRing';
 import NeonHeader from '../components/NeonHeader';
 import GlassCard from '../components/GlassCard';
 import NeonButton from '../components/NeonButton';
+import NeonBarButton from '../components/NeonBarButton';
 import StatCard from '../components/StatCard';
 import NeonIcon from '../components/NeonIcon';
 import { colors, textStyles } from '../theme/typography';
+import { tokens } from '../theme/tokens';
 import { supabase } from '../lib/supabase';
 import { Trophy, RainbowCloud } from 'phosphor-react-native';
 import WorkoutProgressTracker from '../components/WorkoutProgressTracker';
@@ -304,12 +306,20 @@ const DashboardScreen = ({ navigation }) => {
         </View>
 
         {/* CTA Button */}
-        <NeonButton 
-          title={needsMaxTest ? "COMPLETE MAX TEST FIRST" : "START NEXT WORKOUT"} 
-          onPress={handleWorkoutPress}
-          variant={needsMaxTest ? "secondary" : "primary"}
-          style={styles.ctaButton}
-        />
+        <View style={styles.ctaButton}>
+          <NeonBarButton 
+            title={needsMaxTest ? "COMPLETE MAX TEST FIRST" : "GET SWOLE"} 
+            onPress={handleWorkoutPress}
+            fontFamily="IBMPlexMono_700Bold"
+            colors={{
+              primary: tokens.brand.primary,       // #ff1493
+              secondary: tokens.brand.secondary,   // #00ffff
+              card: tokens.background.card,        // #4a1b69
+              text: "#ffffff",
+            }}
+            disabled={false}
+          />
+        </View>
 
         {/* Motivational Quote */}
         <QuoteChipMeasured text={currentQuote || 'Pain is weakness leaving the body!'} />
@@ -344,9 +354,10 @@ const styles = StyleSheet.create({
     // Remove paddingHorizontal so palm trees span full width of stat cards
   },
   ctaButton: {
-    marginTop: 8, // 8px top margin (8px + 8px = 16px total gap from panel)
-    marginBottom: 24, // 24px bottom margin for more space before quote
-    marginHorizontal: 8,
+    marginTop: 12,
+    marginBottom: 24,   // give the glow room to breathe
+    marginHorizontal: 16,
+    overflow: "visible", // CRITICAL: don't clip the neon ring shadow
   },
   quote: {
     alignItems: 'center',
