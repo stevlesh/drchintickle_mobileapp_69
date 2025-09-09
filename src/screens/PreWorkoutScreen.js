@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import BackgroundContainer from '../components/BackgroundContainer';
 import NeonButton from '../components/NeonButton';
+import NeonBarButton from '../components/NeonBarButton';
 import VStack from '../components/VStack';
 import { colors } from '../theme/typography';
 import { tokens } from '../theme/tokens';
@@ -209,11 +210,19 @@ const PreWorkoutScreen = ({ route, navigation }) => {
             <QuoteChipMeasured text={quote || 'Pain is weakness leaving the body!'} />
 
             {/* CTA Button */}
-            <NeonButton 
-              title="START SESSION" 
-              onPress={handleStartSession}
-              variant="primary"
-            />
+            <View style={styles.ctaButton}>
+              <NeonBarButton 
+                title="ACTIVATE SWOLE PATROL" 
+                onPress={handleStartSession}
+                fontFamily="IBMPlexMono_700Bold"
+                colors={{
+                  primary: tokens.brand.primary,       // #ff1493
+                  secondary: tokens.brand.secondary,   // #00ffff
+                  text: "#ffffff",
+                }}
+                disabled={false}
+              />
+            </View>
           </VStack>
         )}
       </ScrollView>
@@ -225,6 +234,12 @@ const styles = StyleSheet.create({
   // Simple container like Dashboard
   container: {
     padding: 24,
+  },
+  ctaButton: {
+    marginTop: 12,
+    marginBottom: 24,   // give the glow room to breathe
+    marginHorizontal: 16,
+    overflow: "visible", // CRITICAL: don't clip the neon ring shadow
   },
   // Neon Card
   neonCardShadow: {
