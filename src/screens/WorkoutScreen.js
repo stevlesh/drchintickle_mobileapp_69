@@ -1,11 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, AppState } from 'react-native'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, AppState, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { useFocusEffect } from '@react-navigation/native'
 import BackgroundContainer from '../components/BackgroundContainer'
 import GlassCard from '../components/GlassCard'
 import NeonButton from '../components/NeonButton'
+import NeonBarButton from '../components/NeonBarButton'
 import NeonIcon from '../components/NeonIcon'
+import NeonCountdown from '../components/neon/NeonCountdown'
+import SetBreakdownCompactGrid from '../components/SetBreakdownCompactGrid'
+import WorkoutProgressTracker from '../components/WorkoutProgressTracker'
+import QuoteChipMeasured from '../components/QuoteChipMeasured'
+import { useReduceMotion } from '../hooks/useReduceMotion'
 import { colors, textStyles } from '../theme/typography'
+import { tokens } from '../theme/tokens'
 import { getQuoteWithAuthor, getQuote } from '../utils/quotes'
 import { supabase } from '../lib/supabase';
 import { bus } from '../lib/bus';
@@ -37,112 +45,100 @@ export default function WorkoutScreen({ navigation, route }) {
   const [pageState, setPageState] = useState('active_set'); // 'active_set', 'resting', 'summary'
   const targetRepsArr = isMaxTestDay ? [0] : (setBreakdown || []);
   const [currentReps, setCurrentReps] = useState(isMaxTestDay ? 0 : (targetRepsArr[0] || 0)); // For max test day, start at 0; otherwise, default to set 1 target
-  const [restTimeLeft, setRestTimeLeft] = useState(120); // 120 seconds rest (2:00 minutes)
+  const [restTimeLeft, setRestTimeLeft] = useState(0); // Computed from deadline
   const [workoutDuration, setWorkoutDuration] = useState(0); // Workout duration in seconds
   const [currentQuote, setCurrentQuote] = useState(null);
+  const [deadline, setDeadline] = useState(null); // Deadline-based timer for rest
+  const [restArmed, setRestArmed] = useState(false); // Blocks auto-complete until first recompute
+  
+  // Get reduce motion preference
+  const reduceMotion = useReduceMotion();
   
   // References for timers
-  const restTimerRef = useRef(null);
-  const restEndTimeRef = useRef(null);
   const workoutTimerRef = useRef(null);
   const workoutStartTimeRef = useRef(Date.now());
   const appStateRef = useRef(AppState.currentState);
+  const REST_DURATION_SEC = 120; // 2 minutes rest
 
   // Log route params for debugging (dev only, minimal deps)
   useEffect(() => {
     if (__DEV__) console.log('WorkoutScreen params:', { workoutNum, workoutType });
   }, [workoutNum, workoutType]);
 
+  // Update workout duration timer
+  const updateWorkoutDuration = useCallback(() => {
+    const elapsedSeconds = Math.floor((Date.now() - workoutStartTimeRef.current) / 1000);
+    setWorkoutDuration(elapsedSeconds);
+  }, []);
+
+  // Start rest period with proper state initialization
+  const startRest = useCallback((seconds = REST_DURATION_SEC) => {
+    const dl = Date.now() + seconds * 1000;
+    setDeadline(dl);
+    setRestTimeLeft(seconds);   // Show full duration immediately (not 0!)
+    setRestArmed(false);        // Will arm after first recompute tick
+    setPageState('resting');    // Render rest UI
+  }, []);
+
   // Initialize workout timer
   useEffect(() => {
     // Store the workout start time
     workoutStartTimeRef.current = Date.now();
     
-    // Start workout duration timer that updates every second
-    const startWorkoutTimer = () => {
-      // Initial calculation of elapsed time
-      const elapsedSeconds = Math.floor((Date.now() - workoutStartTimeRef.current) / 1000);
-      setWorkoutDuration(elapsedSeconds);
-      
-      // Set up interval to update every second
-      workoutTimerRef.current = setInterval(() => {
-        const elapsedSeconds = Math.floor((Date.now() - workoutStartTimeRef.current) / 1000);
-        setWorkoutDuration(elapsedSeconds);
-      }, 1000);
-    };
-    
-    startWorkoutTimer();
-    
-    // Handle app state changes
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
-        // App has come to the foreground
-        
-        // Recalculate workout duration based on actual elapsed time
-        const elapsedSeconds = Math.floor((Date.now() - workoutStartTimeRef.current) / 1000);
-        setWorkoutDuration(elapsedSeconds);
-        
-        // Check rest timer
-        if (pageState === 'resting' && restEndTimeRef.current) {
-          // Recalculate rest time left based on end time
-          const now = Date.now();
-          const timeLeft = Math.max(0, Math.round((restEndTimeRef.current - now) / 1000));
-          setRestTimeLeft(timeLeft);
-          
-          if (timeLeft <= 0) {
-            // Rest time is over
-            setPageState('active_set');
-            clearInterval(restTimerRef.current);
-            restTimerRef.current = null;
-            restEndTimeRef.current = null;
-          }
-        }
-      }
-      appStateRef.current = nextAppState;
-    });
+    // Start workout duration timer
+    updateWorkoutDuration();
+    workoutTimerRef.current = setInterval(updateWorkoutDuration, 1000);
 
     return () => {
       if (workoutTimerRef.current) clearInterval(workoutTimerRef.current);
-      if (restTimerRef.current) clearInterval(restTimerRef.current);
-      subscription.remove();
     };
-  }, []);
-
-  // Start rest timer when entering rest state
+  }, [updateWorkoutDuration]);
+  
+  // Handle rest countdown from deadline
   useEffect(() => {
-    if (pageState === 'resting') {
-      // Set an end time for the rest period (2 minutes from now)
-      restEndTimeRef.current = Date.now() + (restTimeLeft * 1000);
+    if (!deadline) return;
+    
+    const interval = setInterval(() => {
+      const ms = Math.max(0, deadline - Date.now());
+      const secs = Math.ceil(ms / 1000);
+      setRestTimeLeft(secs);
       
-      // Clear any existing timer
-      if (restTimerRef.current) {
-        clearInterval(restTimerRef.current);
-      }
-      
-      // Start a new timer that updates every second
-      restTimerRef.current = setInterval(() => {
-        const now = Date.now();
-        const timeLeft = Math.max(0, Math.round((restEndTimeRef.current - now) / 1000));
-        
-        setRestTimeLeft(timeLeft);
-        
-        if (timeLeft <= 0) {
-          // Rest time is over
-          setPageState('active_set');
-          clearInterval(restTimerRef.current);
-          restTimerRef.current = null;
-          restEndTimeRef.current = null;
-        }
-      }, 1000);
+      // Arm after first successful recompute so we know deadline is live
+      setRestArmed(true);
+    }, 250);
+    
+    return () => clearInterval(interval);
+  }, [deadline]);
+  
+  // Handle app state changes for workout duration
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = AppState.addEventListener('change', updateWorkoutDuration);
+      updateWorkoutDuration();
       
       return () => {
-        if (restTimerRef.current) {
-          clearInterval(restTimerRef.current);
-          restTimerRef.current = null;
-        }
+        subscription?.remove?.();
       };
-    }
+    }, [updateWorkoutDuration])
+  );
+
+  // Handle rest completion (guards with restArmed)
+  const handleRestComplete = useCallback(() => {
+    if (!restArmed) return; // Prevent premature transitions
+    setDeadline(null);
+    setRestArmed(false);
+    setPageState('active_set');
+  }, [restArmed]);
+
+  // Handle rest skip  
+  const handleSkipRest = useCallback(() => {
+    if (pageState !== 'resting') return;
+    setDeadline(null);
+    setRestArmed(false);
+    setPageState('active_set');
   }, [pageState]);
+
+  // Removed buggy monitor effect - let NeonCountdown be single authority
 
   // Get context-aware quotes based on workout state
   useEffect(() => {
@@ -160,26 +156,14 @@ export default function WorkoutScreen({ navigation, route }) {
     if (currentSet < totalSets) {
       setCurrentSet(currentSet + 1)
       setCurrentReps(targetRepsArr[currentSet]) // Set next set's target
-      setRestTimeLeft(120) // Reset rest timer to 2:00
-      setPageState('resting') // This will trigger the useEffect to start the timer
+      
+      // Start rest period using proper function
+      startRest(REST_DURATION_SEC);
     } else {
       setPageState('summary')
-      // Clear rest timer if it exists
-      if (restTimerRef.current) {
-        clearInterval(restTimerRef.current);
-        restTimerRef.current = null;
-      }
+      setDeadline(null);
+      setRestArmed(false);
     }
-  }
-
-  const handleSkipRest = () => {
-    // Clear rest timer
-    if (restTimerRef.current) {
-      clearInterval(restTimerRef.current);
-      restTimerRef.current = null;
-      restEndTimeRef.current = null;
-    }
-    setPageState('active_set')
   }
 
   const handleFinishWorkout = async () => {
@@ -265,15 +249,15 @@ export default function WorkoutScreen({ navigation, route }) {
   }
 
   const handleBackToDashboard = () => {
-    // Clear all timers
+    // Clear workout timer
     if (workoutTimerRef.current) {
       clearInterval(workoutTimerRef.current);
       workoutTimerRef.current = null;
     }
-    if (restTimerRef.current) {
-      clearInterval(restTimerRef.current);
-      restTimerRef.current = null;
-    }
+    
+    // Clear rest state (deadline-based timer cleans up automatically via useEffect)
+    setDeadline(null);
+    setRestArmed(false);
     
     // Reset the WorkoutStack to PreWorkout screen first
     navigation.reset({
@@ -291,6 +275,10 @@ export default function WorkoutScreen({ navigation, route }) {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Time helpers for clean display
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const mmss = (s) => `${pad2(Math.floor(s/60))}:${pad2(s%60)}`;
 
   const renderActiveSet = () => (
     <>
@@ -357,68 +345,68 @@ export default function WorkoutScreen({ navigation, route }) {
     </>
   )
 
-  const renderResting = () => (
-    <>
-      <Text style={styles.title}>REST TIME</Text>
-      <Text style={styles.subtitle}>NEXT UP: SET {currentSet} OF {totalSets}</Text>
-      
-      {/* Workout Duration Timer */}
-      <Text style={styles.durationText}>
-        DURATION: {formatTime(workoutDuration)}
-      </Text>
-
-      <GlassCard 
-        borderColor={colors.electricCyan} 
-        glowColor={colors.electricCyan}
-        style={styles.actionCard}
-      >
-        <Text style={styles.setLabel}>TARGET: {targetRepsArr[currentSet - 1]} REPS</Text>
-        <Text style={styles.timerText}>
-          {Math.floor(restTimeLeft / 60)}:{(restTimeLeft % 60).toString().padStart(2, '0')}
-        </Text>
-        <View style={styles.progressBar}>
+  const renderResting = () => {
+    // Map data for SetBreakdownCompactGrid
+    const data = targetRepsArr.map((v, i) => ({ 
+      k: `S${i+1}`, 
+      v, 
+      next: (i + 1) === currentSet 
+    }));
+    
+    return (
+      <>
+        {/* Header Row with Duration Chip */}
+        <View style={[styles.headerRow, { paddingTop: 48 }]}>
+          <Text style={styles.title}>REST TIME</Text>
           <View 
-            style={[
-              styles.progressFill, 
-              { width: `${((120 - restTimeLeft) / 120) * 100}%` }
-            ]} 
+            accessible 
+            accessibilityRole="text" 
+            accessibilityLabel={`Workout duration, ${Math.floor(workoutDuration/60)} minutes ${workoutDuration%60} seconds`}
+          >
+            <View style={styles.durationChip}>
+              <Text style={styles.durationDot}>•</Text>
+              <Text style={styles.durationLabel}>WORKOUT</Text>
+              <Text style={styles.durationTime}>{mmss(workoutDuration)}</Text>
+            </View>
+          </View>
+        </View>
+        
+
+        {/* Neon Countdown Timer - Single Authority */}
+        <NeonCountdown
+          seconds={restTimeLeft}
+          onDone={() => { if (restArmed) handleRestComplete(); }}
+          onSkip={() => { if (pageState === 'resting') handleSkipRest(); }}
+          reducedMotion={reduceMotion}
+          size="lg"
+        />
+
+        {/* Set Breakdown Grid - modern 4x2 scoreboard */}
+        <SetBreakdownCompactGrid data={data} />
+
+        {/* Motivational Quote - Consistent with other screens */}
+        <View style={{ marginTop: 12 }}>
+          <QuoteChipMeasured
+            text={currentQuote || 'Rest today, conquer tomorrow!'}
+            style={{ alignSelf: 'center' }}
           />
         </View>
-        {/* Set breakdown grid */}
-        <View style={styles.setGrid}>
-          {targetRepsArr.map((reps, idx) => {
-            let cellStyle = styles.setCell;
-            let labelStyle = styles.setLabel;
-            let repsStyle = styles.setReps;
-            if (idx < currentSet - 1) {
-              // Completed
-              cellStyle = [styles.setCell, styles.setCellCompleted];
-              labelStyle = [styles.setLabel, styles.setLabelCompleted];
-              repsStyle = [styles.setReps, styles.setRepsCompleted];
-            } else if (idx === currentSet - 1) {
-              // Current
-              cellStyle = [styles.setCell, styles.setCellCurrent];
-              labelStyle = [styles.setLabel, styles.setLabelCurrent];
-              repsStyle = [styles.setReps, styles.setRepsCurrent];
-            }
-            return (
-              <View key={idx} style={cellStyle}>
-                <Text style={labelStyle}>S{idx+1}</Text>
-                <Text style={repsStyle}>{reps}</Text>
-              </View>
-            );
-          })}
-        </View>
-      </GlassCard>
 
-      <NeonButton 
-        title="SKIP REST" 
-        onPress={handleSkipRest}
-        variant="secondary"
-        style={styles.actionButton}
-      />
-    </>
-  )
+        {/* Modern Neon Bar Button */}
+        <View style={{ marginTop: 12, marginBottom: 20 }}>
+          <NeonBarButton 
+            title="NEXT SET" 
+            onPress={handleSkipRest}
+            colors={{ 
+              primary: tokens.brand.primary, 
+              secondary: tokens.brand.secondary 
+            }}
+            height={52}
+          />
+        </View>
+      </>
+    );
+  }
 
   const renderSummary = () => (
     <>
@@ -469,53 +457,98 @@ export default function WorkoutScreen({ navigation, route }) {
 
   return (
     <BackgroundContainer>
-      <View style={styles.container}>
-        {pageState === 'active_set' && renderActiveSet()}
-        {pageState === 'resting' && renderResting()}
-        {pageState === 'summary' && renderSummary()}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+      >
+        <View style={styles.container}>
+          {pageState === 'active_set' && renderActiveSet()}
+          {pageState === 'resting' && renderResting()}
+          {pageState === 'summary' && renderSummary()}
 
-        <NeonButton 
-          title="← BACK TO DASHBOARD" 
-          onPress={handleBackToDashboard}
-          variant="secondary"
-          style={styles.backButton}
-        />
-
-        {/* Motivational Quote - no card, just neon text */}
-        <Text style={styles.quoteTextDirect}>
-          {currentQuote ? `"${currentQuote}"` : '"Pain is weakness leaving the body!"'}
-        </Text>
-      </View>
+          <View style={{ marginTop: 60 }}> 
+            <NeonBarButton 
+              title="← BACK TO DASHBOARD" 
+              onPress={handleBackToDashboard}
+              colors={{ 
+                primary: 'transparent', 
+                secondary: tokens.brand.secondary,
+                text: tokens.text.primary
+              }}
+              style={[styles.backButton, { opacity: 0.7 }]}
+              height={48}
+              showIcon={false}
+            />
+          </View>
+        </View>
+      </ScrollView>
     </BackgroundContainer>
   )
 }
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingBottom: 40, // Extra padding at bottom for scroll
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    marginBottom: 8,
+    width: '100%',
+  },
   title: {
     ...textStyles.pageTitle,
-    marginBottom: 8,
-    textAlign: 'center',
+    textAlign: 'left',
+    marginBottom: 0,
   },
   subtitle: {
     ...textStyles.infoLabel,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  durationText: {
-    ...textStyles.infoLabel,
-    color: colors.neonYellow,
     marginBottom: 16,
     textAlign: 'center',
-    textShadowColor: colors.neonYellow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
+    opacity: 0.8,
+    marginTop: 4,
   },
+  durationChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: tokens.component.neonCard.background[0] + 'A6', // 65% opacity to match countdown timer
+    borderWidth: 1,
+    borderColor: tokens.brand.secondary,
+  },
+  durationDot: {
+    color: tokens.brand.secondary,
+    marginRight: 6,
+    fontSize: 12,
+  },
+  durationLabel: {
+    color: tokens.brand.secondary,
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 10,
+    marginRight: 6,
+    letterSpacing: 1,
+  },
+  durationTime: {
+    color: tokens.text.primary,
+    fontFamily: 'Orbitron_700Bold',
+    fontSize: 11,
+    letterSpacing: 0.5,
+  },
+  // Removed old durationText - now using duration chip in header
   durationSummary: {
     ...textStyles.infoLabel,
     color: colors.neonYellow,
@@ -571,16 +604,7 @@ const styles = StyleSheet.create({
     color: colors.electricCyan,
     marginBottom: 24,
   },
-  timerText: {
-    ...textStyles.heroNumber,
-    fontSize: 72,
-    color: colors.electricCyan,
-    textShadowColor: colors.electricCyan,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 25,
-    textAlign: 'center',
-    marginVertical: 16,
-  },
+  // Removed old timerText style - now using NeonCountdown component
   progressBar: {
     width: 240,
     height: 8,
@@ -609,7 +633,7 @@ const styles = StyleSheet.create({
     marginVertical: 24,
   },
   backButton: {
-    marginTop: 24,
+    marginTop: 32, // Increased spacing from START NEXT SET button
     marginBottom: 24,
   },
   quote: {
@@ -625,58 +649,11 @@ const styles = StyleSheet.create({
   quoteAuthor: {
     ...textStyles.quoteAuthor,
   },
-  setGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
-    marginTop: 24,
-    width: '100%',
-  },
-  setCell: {
-    width: '25%', // 4 columns
-    alignItems: 'center',
-    marginVertical: 8,
-  },
-  setCellCompleted: {
-    opacity: 0.5,
-  },
-  setCellCurrent: {
-    backgroundColor: colors.electricCyan,
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
+  // Old set grid styles removed - now using SetBreakdownCompactGrid component
   setLabel: {
     ...textStyles.infoLabel,
-    fontSize: 12,
-    color: colors.electricCyan,
-  },
-  setLabelCompleted: {
-    color: colors.electricCyan,
-  },
-  setLabelCurrent: {
-    color: colors.white,
-  },
-  setReps: {
-    ...textStyles.heroNumber,
-    fontSize: 24,
-    color: colors.electricCyan,
-  },
-  setRepsCompleted: {
-    color: colors.electricCyan,
-  },
-  setRepsCurrent: {
-    color: colors.white,
-  },
-  quoteTextDirect: {
-    ...textStyles.quote,
+    marginBottom: 24,
     textAlign: 'center',
-    marginTop: 32,
-    marginBottom: 8,
-    fontSize: 16,
-    textShadowColor: colors.neonYellow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-    paddingHorizontal: 8,
   },
+  // Removed quoteTextDirect - now using QuoteChipMeasured component
 })

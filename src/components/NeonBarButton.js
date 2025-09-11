@@ -19,6 +19,7 @@ export default function NeonBarButton({
   colors = {},
   fontFamily = DEFAULTS.fontFamily,
   height = DEFAULTS.height,
+  showIcon = true,
 }) {
   const palette = { ...DEFAULTS, ...colors };
 
@@ -168,12 +169,14 @@ export default function NeonBarButton({
             </Text>
           </View>
 
-          {/* Beach ball icon after text */}
-          <BeachBall 
-            size={28} 
-            color={palette.secondary} 
-            style={styles.icon}
-          />
+          {/* Beach ball icon after text (conditional) */}
+          {showIcon && (
+            <BeachBall 
+              size={28} 
+              color={palette.secondary} 
+              style={styles.icon}
+            />
+          )}
         </View>
       </Pressable>
     </Animated.View>
