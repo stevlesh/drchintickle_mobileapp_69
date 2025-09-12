@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, AppState, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, AppState, ScrollView, Animated, Easing } from 'react-native'
+import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect } from '@react-navigation/native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import BackgroundContainer from '../components/BackgroundContainer'
 import GlassCard from '../components/GlassCard'
 import NeonButton from '../components/NeonButton'
@@ -19,6 +21,9 @@ import { supabase } from '../lib/supabase';
 import { bus } from '../lib/bus';
 
 export default function WorkoutScreen({ navigation, route }) {
+  // Safe area insets for proper device compatibility
+  const insets = useSafeAreaInsets();
+  
   // Accept params from navigation
   const {
     workoutNum = 2,
@@ -50,6 +55,41 @@ export default function WorkoutScreen({ navigation, route }) {
   const [currentQuote, setCurrentQuote] = useState(null);
   const [deadline, setDeadline] = useState(null); // Deadline-based timer for rest
   const [restArmed, setRestArmed] = useState(false); // Blocks auto-complete until first recompute
+  
+  // Animation for rep number pulse and flicker
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+  const flickerAnim = useRef(new Animated.Value(1)).current;
+  
+  // Pulse animation disabled - user wants only subtle flicker
+  // useEffect(() => {
+  //   Animated.sequence([
+  //     Animated.timing(pulseAnim, { 
+  //       toValue: 1, 
+  //       duration: 120, 
+  //       easing: Easing.out(Easing.quad), 
+  //       useNativeDriver: true 
+  //     }),
+  //     Animated.timing(pulseAnim, { 
+  //       toValue: 0, 
+  //       duration: 140, 
+  //       easing: Easing.in(Easing.quad), 
+  //       useNativeDriver: true 
+  //     }),
+  //   ]).start();
+  // }, [currentReps]);
+
+  // Ultra subtle flicker animation - barely noticeable
+  useEffect(() => {
+    const flicker = () => {
+      Animated.sequence([
+        Animated.timing(flickerAnim, { toValue: 0.9995, duration: 50, useNativeDriver: true }),
+        Animated.timing(flickerAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+      ]).start(() => {
+        setTimeout(() => flicker(), 60000 + Math.random() * 120000); // 1-3 minutes between flickers
+      });
+    };
+    flicker();
+  }, []);
   
   // Get reduce motion preference
   const reduceMotion = useReduceMotion();
@@ -280,70 +320,130 @@ export default function WorkoutScreen({ navigation, route }) {
   const pad2 = (n) => String(n).padStart(2, '0');
   const mmss = (s) => `${pad2(Math.floor(s/60))}:${pad2(s%60)}`;
 
-  const renderActiveSet = () => (
-    <>
-      <Text style={styles.title}>{isMaxTestDay ? 'MAX TEST DAY' : workoutType}</Text>
-      {!isMaxTestDay && <Text style={styles.subtitle}>SET {currentSet} OF {totalSets}</Text>}
-      {isMaxTestDay && <Text style={styles.subtitle}>PERFORM YOUR MAXIMUM REPS</Text>}
-      
-      {/* Workout Duration Timer */}
-      <Text style={styles.durationText}>
-        DURATION: {formatTime(workoutDuration)}
-      </Text>
+  // Reusable duration chip component
+  const DurationChip = ({ label, seconds }) => (
+    <View 
+      accessible 
+      accessibilityRole="text" 
+      accessibilityLabel={`${label}, ${Math.floor(seconds/60)} minutes ${seconds%60} seconds`}
+    >
+      <View style={styles.durationChip}>
+        <Text style={styles.durationDot}>•</Text>
+        <Text style={styles.durationLabel}>{label}</Text>
+        <Text style={styles.durationTime}>{mmss(seconds)}</Text>
+      </View>
+    </View>
+  );
 
-      {/* Action Card with Rep Input */}
-      <GlassCard 
-        borderColor={colors.purple} 
-        glowColor={colors.purple}
-        style={styles.actionCard}
-      >
-        {isMaxTestDay ? (
-          <Text style={styles.setLabel}>ENTER YOUR MAX REPS</Text>
-        ) : (
-          <Text style={styles.setLabel}>TARGET: {targetRepsArr[currentSet - 1]} REPS</Text>
-        )}
-        
-        {/* Interactive Rep Input - Redesigned Stepper */}
-        <View style={styles.repInputContainer}>
-          <TouchableOpacity 
-            style={styles.stepperButton} 
-            onPress={() => setCurrentReps(Math.max(0, currentReps - 1))}
-          >
-            <Text style={styles.stepperText}>−</Text>
-          </TouchableOpacity>
-          
-          <Text style={styles.repTarget}>{currentReps}</Text>
-          
-          <TouchableOpacity 
-            style={styles.stepperButton} 
-            onPress={() => setCurrentReps(currentReps + 1)}
-          >
-            <Text style={styles.stepperText}>+</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <Text style={styles.repsLabel}>REPS COMPLETED</Text>
-        
-        {!isMaxTestDay && (
-          <View style={styles.progressBar}>
-            <View 
-              style={[
-                styles.progressFill, 
-                { width: `${((currentSet - 1) / totalSets) * 100}%` }
-              ]} 
-            />
+  const renderActiveSet = () => {
+    return (
+      <>
+        {/* HEADER - Title + Subheader pills grouped */}
+        <View style={styles.headerSection}>
+          <Text style={styles.title}>
+            {isMaxTestDay ? 'MAX TEST DAY' : workoutType}
+          </Text>
+
+          {/* Subheader row = two matching pills */}
+          <View style={styles.subheaderRow}>
+            {!isMaxTestDay ? (
+              <View style={styles.setPill}>
+                <Text style={styles.setPillText}>SET {currentSet} OF {totalSets}</Text>
+              </View>
+            ) : (
+              <View style={styles.setPill}>
+                <Text style={styles.setPillText}>MAX TEST</Text>
+              </View>
+            )}
+            
+            <View style={styles.pill}>
+              <Text style={styles.pillTextDim}>• WORKOUT</Text>
+              <Text style={styles.pillText}>{mmss(workoutDuration)}</Text>
+            </View>
           </View>
-        )}
-      </GlassCard>
+        </View>
 
-      <NeonButton 
-        title={isMaxTestDay ? "COMPLETE MAX TEST" : "COMPLETE SET"} 
-        onPress={handleCompleteSet}
-        variant="primary"
-        style={styles.actionButton}
-      />
-    </>
-  )
+        {/* CONTROL - Corner bracket counter with micro-label */}
+        <View style={styles.controlSection}>
+          <View style={styles.kpiRow}>
+            <TouchableOpacity 
+              style={styles.stepCircle} 
+              onPress={() => setCurrentReps(Math.max(0, currentReps - 1))}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={[styles.stepGlyph, { marginTop: 1 }]}>−</Text>
+            </TouchableOpacity>
+            
+            <View style={styles.repContainer}>
+              {/* Expanded corner brackets */}
+              <View style={[styles.cornerBracket, styles.topLeft]} />
+              <View style={[styles.cornerBracket, styles.topRight]} />
+              <View style={[styles.cornerBracket, styles.bottomLeft]} />
+              <View style={[styles.cornerBracket, styles.bottomRight]} />
+              
+              {/* Pink radial halo behind number */}
+              <View pointerEvents="none" style={styles.radialWrap}>
+                <Svg width="100%" height="100%" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice">
+                  <Defs>
+                    <RadialGradient id="pinkGlow" cx="50%" cy="50%" r="50%">
+                      <Stop offset="0%" stopColor="#FF2CA3" stopOpacity="0.85" />
+                      <Stop offset="55%" stopColor="#FF2CA3" stopOpacity="0.35" />
+                      <Stop offset="100%" stopColor="#FF2CA3" stopOpacity="0" />
+                    </RadialGradient>
+                  </Defs>
+                  <Circle cx="150" cy="150" r="135" fill="url(#pinkGlow)" />
+                </Svg>
+              </View>
+
+              {/* Pink glow fallback behind number */}
+              <Text style={styles.numGlow}>{String(currentReps).padStart(2, '0')}</Text>
+              
+              {/* Large rep number with pulse and flicker animation */}
+              <Animated.Text style={[
+                styles.repTarget, 
+                { 
+                  opacity: flickerAnim,
+                  // transform removed - no pulse animation
+                }
+              ]}>
+                {String(currentReps).padStart(2, '0')}
+              </Animated.Text>
+              
+              {/* Bottom-center bridge micro-label */}
+              {!isMaxTestDay && (
+                <View style={styles.bridge}>
+                  <Text style={styles.bridgeText}>
+                    TARGET: {targetRepsArr[currentSet - 1]}
+                  </Text>
+                </View>
+              )}
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.stepCircle} 
+              onPress={() => setCurrentReps(currentReps + 1)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.stepGlyph}>+</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* CTA */}
+        <View style={styles.ctaSection}>
+          <NeonBarButton 
+            title={isMaxTestDay ? "COMPLETE MAX TEST" : "COMPLETE SET"} 
+            onPress={handleCompleteSet}
+            colors={{ 
+              primary: tokens.brand.primary, 
+              secondary: tokens.brand.secondary 
+            }}
+            height={52}
+          />
+        </View>
+      </>
+    );
+  };
 
   const renderResting = () => {
     // Map data for SetBreakdownCompactGrid
@@ -358,17 +458,7 @@ export default function WorkoutScreen({ navigation, route }) {
         {/* Header Row with Duration Chip */}
         <View style={[styles.headerRow, { paddingTop: 48 }]}>
           <Text style={styles.title}>REST TIME</Text>
-          <View 
-            accessible 
-            accessibilityRole="text" 
-            accessibilityLabel={`Workout duration, ${Math.floor(workoutDuration/60)} minutes ${workoutDuration%60} seconds`}
-          >
-            <View style={styles.durationChip}>
-              <Text style={styles.durationDot}>•</Text>
-              <Text style={styles.durationLabel}>WORKOUT</Text>
-              <Text style={styles.durationTime}>{mmss(workoutDuration)}</Text>
-            </View>
-          </View>
+          <DurationChip label="WORKOUT" seconds={workoutDuration} />
         </View>
         
 
@@ -487,17 +577,20 @@ export default function WorkoutScreen({ navigation, route }) {
   )
 }
 
+// Systematic spacing scale
+const SP = { xs: 6, s: 10, m: 14, l: 24, xl: 32, xxl: 36 };
+
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingBottom: 40, // Extra padding at bottom for scroll
+    paddingTop: 100,          // shift everything down more
+    paddingBottom: SP.xl,     // breathing room above bottom bar
+    paddingHorizontal: 20,
+    justifyContent: 'flex-start',
   },
   container: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
   },
   headerRow: {
     flexDirection: 'row',
@@ -597,7 +690,8 @@ const styles = StyleSheet.create({
     fontSize: 84,
     minWidth: 140,
     textAlign: 'center',
-    marginVertical: 16,
+    marginTop: 78,                       // push down to align center of number with +/- buttons
+    marginBottom: 16,
   },
   repsLabel: {
     ...textStyles.infoLabel,
@@ -636,6 +730,153 @@ const styles = StyleSheet.create({
     marginTop: 32, // Increased spacing from START NEXT SET button
     marginBottom: 24,
   },
+  // PAGE LAYOUT
+  page: {
+    flexGrow: 1,
+    paddingTop: 16,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    justifyContent: 'flex-start', // Key: no center packing
+  },
+
+  // HEADER SECTION
+  headerSection: { 
+    alignItems: 'center', 
+    gap: 8, 
+    marginBottom: 16 
+  },
+  subtitle: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 14,
+    letterSpacing: 1,
+    color: '#ffffff',
+    textTransform: 'uppercase',
+  },
+  durationChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: tokens.brand.secondary,
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    shadowColor: tokens.brand.secondary,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  durationDot: { 
+    color: tokens.brand.secondary, 
+    marginRight: 2 
+  },
+  durationLabel: { 
+    fontFamily: 'IBMPlexMono_700Bold', 
+    fontSize: 11, 
+    letterSpacing: 1.2, 
+    color: tokens.text.secondary 
+  },
+  durationTime: { 
+    fontFamily: 'IBMPlexMono_700Bold', 
+    fontSize: 11, 
+    letterSpacing: 1.2, 
+    color: tokens.text.primary 
+  },
+
+  // CONTROL SECTION
+  controlSection: { 
+    alignItems: 'center', 
+    gap: 10, 
+    marginTop: 12, 
+    marginBottom: 26 // 26px breathing room before CTA
+  },
+  targetChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: tokens.brand.secondary,
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    shadowColor: tokens.brand.secondary,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  targetChipText: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 12,
+    letterSpacing: 1.1,
+    color: '#ffffff', // Plain white as requested
+  },
+  kpiRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 12 
+  },
+  repRing: {
+    width: 116,
+    height: 116,
+    borderRadius: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: tokens.brand.secondary,
+    backgroundColor: 'rgba(0,0,0,0.14)',
+    shadowColor: tokens.brand.secondary,
+    shadowOpacity: 0.40,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 0 },
+    position: 'relative',
+  },
+  repRingInnerStroke: {
+    position: 'absolute',
+    top: 1,
+    left: 1,
+    right: 1,
+    bottom: 1,
+    borderRadius: 57,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    pointerEvents: 'none',
+  },
+  stepCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.25,
+    borderColor: tokens.brand.secondary,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    shadowColor: tokens.brand.secondary,
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  stepLeft: { marginRight: -6 }, // Subtle overlap toward ring
+  stepRight: { marginLeft: -6 },
+  stepGlyph: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 20,
+    color: tokens.text.primary,
+    textShadowColor: tokens.brand.secondary,
+    textShadowRadius: 5,
+    textShadowOffset: { width: 0, height: 0 },
+  },
+
+  // CTA SECTION
+  ctaSection: { gap: 12 },
+  circleGlyph: {
+    fontFamily: 'IBMPlexMono_700Bold', 
+    fontSize: 26, 
+    fontWeight: '700',
+    color: tokens.text.primary,
+    textShadowColor: tokens.brand.secondary, 
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 0 },
+  },
   quote: {
     alignItems: 'center',
     paddingVertical: 16,
@@ -649,6 +890,218 @@ const styles = StyleSheet.create({
   quoteAuthor: {
     ...textStyles.quoteAuthor,
   },
+  // HEADER
+  headerSection: { 
+    alignItems: 'center', 
+    gap: SP.xs, 
+    marginBottom: SP.m 
+  },
+  
+  // Subheader as two matching pills
+  subheaderRow: { 
+    flexDirection: 'row', 
+    gap: SP.xs,               // smaller gap to move pills closer
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  pill: {
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6,
+    paddingHorizontal: 12, 
+    paddingVertical: 6,
+    borderRadius: 999, 
+    borderWidth: 1, 
+    borderColor: tokens.brand.secondary,
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    shadowColor: tokens.brand.secondary, 
+    shadowOpacity: 0.25, 
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  pillTextDim: { 
+    fontFamily: 'IBMPlexMono_700Bold', 
+    fontSize: 11, 
+    letterSpacing: 1.2, 
+    color: tokens.text.secondary 
+  },
+  pillText: { 
+    fontFamily: 'IBMPlexMono_700Bold', 
+    fontSize: 11, 
+    letterSpacing: 1.2, 
+    color: tokens.text.primary 
+  },
+
+  // SET PILL - Just bold white text, no border/glow
+  setPill: {
+    paddingHorizontal: 12, 
+    paddingVertical: 6,
+  },
+  setPillText: { 
+    fontFamily: 'IBMPlexMono_700Bold', 
+    fontSize: 12,                     // increased from 11px
+    letterSpacing: 1.2, 
+    color: tokens.text.primary,        // bold white text
+    fontWeight: '700',
+  },
+
+  // CONTROL BLOCK
+  controlSection: { 
+    alignItems: 'center', 
+    marginTop: 52,            // maximum breathing room after subheader
+    marginBottom: SP.xxl, 
+  },
+
+  kpiRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',     // spread buttons apart
+    paddingHorizontal: 15,               // even closer to screen edges
+    width: '100%',
+  },
+
+  repContainer: {
+    width: 260,                          
+    height: 200,                         // increased for square bracket formation
+    alignItems: 'center', 
+    justifyContent: 'flex-start',        // don't center - let me position the number manually
+    position: 'relative',
+  },
+  
+  // Clean corner brackets - elegant, not obnoxious
+  cornerBracket: {
+    position: 'absolute',
+    width: 30,                           // back to reasonable size
+    height: 30,                          // back to reasonable size
+    borderColor: tokens.brand.secondary,
+    borderWidth: 2,                      // back to original thickness
+    shadowColor: tokens.brand.secondary,
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  topLeft: {
+    top: 8,                              // more vertical space between brackets
+    left: 16,
+    borderBottomWidth: 0,
+    borderRightWidth: 0,
+  },
+  topRight: {
+    top: 8,
+    right: 16,
+    borderBottomWidth: 0,
+    borderLeftWidth: 0,
+  },
+  bottomLeft: {
+    bottom: 8,                           // more vertical space between brackets
+    left: 16,
+    borderTopWidth: 0,
+    borderRightWidth: 0,
+  },
+  bottomRight: {
+    bottom: 8,
+    right: 16,
+    borderTopWidth: 0,
+    borderLeftWidth: 0,
+  },
+
+  // Pink radial halo container
+  radialWrap: {
+    position: 'absolute',
+    top: -15,                            // move UP to align with number center  
+    left: -20,                           // center the 300px glow in 260px container
+    width: 300,
+    height: 300,
+    opacity: 0.9,
+  },
+
+  // Pink glow fallback behind number
+  numGlow: {
+    position: 'absolute',
+    top: 65,                             // calculated: container center (100) - number half-height (50) + fine-tune
+    left: 0,
+    right: 0,
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 100,                       // smaller to match main number
+    lineHeight: 100,
+    color: '#FF2CA3',                    // hot pink
+    opacity: 0.6,
+    fontWeight: '900',
+    textShadowColor: '#FF2CA3',
+    textShadowRadius: 24,                // adjusted for smaller size
+    textShadowOffset: { width: 0, height: 0 },
+    textAlign: 'center',                 // ensure perfect centering
+  },
+
+  repTarget: {
+    position: 'absolute',
+    top: 65,                             // calculated: container center (100) - number half-height (50) + fine-tune
+    left: 0,
+    right: 0,
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 100,                       // smaller for better proportion
+    lineHeight: 100,
+    color: tokens.text.primary,          // white number on top
+    fontWeight: '900',
+    textShadowColor: tokens.brand.secondary,
+    textShadowRadius: 10,                // adjusted for smaller size
+    textShadowOffset: { width: 0, height: 0 },
+    textAlign: 'center',                 // ensure perfect centering
+  },
+
+  // BRIDGE DIRECTLY UNDER NUMBER
+  bridge: {
+    position: 'absolute',
+    bottom: 30,                          // Fixed distance from bottom of container
+    alignSelf: 'center',
+    paddingHorizontal: 8,
+    height: 18,
+    borderWidth: 1,
+    borderRadius: 9,
+    borderColor: tokens.brand.secondary,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    justifyContent: 'center',
+    shadowColor: tokens.brand.secondary,
+    shadowOpacity: 0.75,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  bridgeText: {
+    fontSize: 10,
+    letterSpacing: 2,
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontWeight: '800',
+    color: '#EAFBFF',
+  },
+
+  stepCircle: {
+    width: 46, 
+    height: 46, 
+    borderRadius: 23,
+    alignItems: 'center', 
+    justifyContent: 'center',
+    borderWidth: 1.25, 
+    borderColor: tokens.brand.secondary,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    shadowColor: tokens.brand.secondary, 
+    shadowOpacity: 0.28, 
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  stepGlyph: {
+    fontFamily: 'IBMPlexMono_700Bold', 
+    fontSize: 20,
+    color: tokens.text.primary, 
+    textShadowColor: tokens.brand.secondary, 
+    textShadowRadius: 5,
+    textShadowOffset: { width: 0, height: 0 },  // ensure consistent shadow positioning
+  },
+
+  // CTA block: space from control, tidy stack
+  ctaSection: { 
+    marginBottom: 52          // matching spacing before back button
+  },
+
   // Old set grid styles removed - now using SetBreakdownCompactGrid component
   setLabel: {
     ...textStyles.infoLabel,
@@ -657,3 +1110,4 @@ const styles = StyleSheet.create({
   },
   // Removed quoteTextDirect - now using QuoteChipMeasured component
 })
+
