@@ -69,6 +69,8 @@ export const tokens = {
     pinkA: '#FF006B',    // Progress ring gradient start - more vibrant
     pinkB: '#FF3DFF',    // Progress ring gradient end - more vibrant
     pinkGlow: '#FF44C8', // Progress ring glow effect
+    neonPurple: '#9D4EFF',    // ELECTRIC neon purple border - more saturated and intense
+    neonPurpleGlow: '#B866FF', // ELECTRIC neon purple glow - brighter and more vibrant
   },
   
   // Component-specific tokens
