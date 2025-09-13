@@ -9,7 +9,6 @@ import GlassCard from '../components/GlassCard'
 import NeonButton from '../components/NeonButton'
 import NeonBarButton from '../components/NeonBarButton'
 import NeonIcon from '../components/NeonIcon'
-import NeonCountdown from '../components/neon/NeonCountdown'
 import SetBreakdownCompactGrid from '../components/SetBreakdownCompactGrid'
 import WorkoutProgressTracker from '../components/WorkoutProgressTracker'
 import QuoteChipMeasured from '../components/QuoteChipMeasured'
@@ -447,35 +446,77 @@ export default function WorkoutScreen({ navigation, route }) {
   };
 
   const renderResting = () => {
+    // Format timer as M:SS
+    const formatTime = (seconds) => {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins}:${String(secs).padStart(2, '0')}`;
+    };
+
     // Map data for SetBreakdownCompactGrid
-    const data = targetRepsArr.map((v, i) => ({ 
-      k: `S${i+1}`, 
-      v, 
-      next: (i + 1) === currentSet 
+    const data = targetRepsArr.map((v, i) => ({
+      k: `S${i+1}`,
+      v,
+      next: (i + 1) === currentSet
     }));
-    
+
     return (
       <>
-        {/* Header Row with Duration Chip */}
-        <View style={[styles.headerRow, { paddingTop: 48 }]}>
+        {/* HEADER - Matches Active state structure exactly */}
+        <View style={styles.headerSection}>
           <Text style={styles.title}>REST TIME</Text>
-          <DurationChip label="WORKOUT" seconds={workoutDuration} />
+          <View style={styles.subheaderRow}>
+            <View style={styles.setPill}>
+              <Text style={styles.setPillText}>SET {currentSet} OF {totalSets}</Text>
+            </View>
+            <View style={styles.pill}>
+              <Text style={styles.pillTextDim}>• WORKOUT</Text>
+              <Text style={styles.pillText}>{mmss(workoutDuration)}</Text>
+            </View>
+          </View>
         </View>
-        
 
-        {/* Neon Countdown Timer - Single Authority */}
-        <NeonCountdown
-          seconds={restTimeLeft}
-          onDone={() => { if (restArmed) handleRestComplete(); }}
-          onSkip={() => { if (pageState === 'resting') handleSkipRest(); }}
-          reducedMotion={reduceMotion}
-          size="lg"
-        />
+        {/* CONTROL SECTION - Twin of Active but with timer */}
+        <View style={styles.controlSection}>
+          <View style={styles.restTimerContainer}>
+            {/* Corner brackets - wider for timer */}
+            <View style={[styles.cornerBracket, styles.topLeft]} />
+            <View style={[styles.cornerBracket, styles.topRight]} />
+            <View style={[styles.cornerBracket, styles.bottomLeft]} />
+            <View style={[styles.cornerBracket, styles.bottomRight]} />
 
-        {/* Set Breakdown Grid - modern 4x2 scoreboard */}
+            {/* Pink radial halo behind timer (optional, subtle) */}
+            <View pointerEvents="none" style={styles.radialWrap}>
+              <Svg width="100%" height="100%" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice">
+                <Defs>
+                  <RadialGradient id="pinkGlow" cx="50%" cy="50%" r="50%">
+                    <Stop offset="0%" stopColor="#FF2CA3" stopOpacity="0.85" />
+                    <Stop offset="55%" stopColor="#FF2CA3" stopOpacity="0.35" />
+                    <Stop offset="100%" stopColor="#FF2CA3" stopOpacity="0" />
+                  </RadialGradient>
+                </Defs>
+                <Circle cx="150" cy="150" r="135" fill="url(#pinkGlow)" />
+              </Svg>
+            </View>
+
+            {/* Timer display - styled like rep number */}
+            <Text style={styles.restTimerText}>{formatTime(restTimeLeft)}</Text>
+
+            {/* Skip button in bridge position */}
+            <TouchableOpacity
+              style={[styles.bridge, styles.skipBridge]}
+              onPress={handleSkipRest}
+              hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}
+            >
+              <Text style={styles.bridgeText}>SKIP</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Set Breakdown Grid - keep as is */}
         <SetBreakdownCompactGrid data={data} />
 
-        {/* Motivational Quote - Consistent with other screens */}
+        {/* Motivational Quote - keep as is */}
         <View style={{ marginTop: 12 }}>
           <QuoteChipMeasured
             text={currentQuote || 'Rest today, conquer tomorrow!'}
@@ -483,18 +524,7 @@ export default function WorkoutScreen({ navigation, route }) {
           />
         </View>
 
-        {/* Modern Neon Bar Button */}
-        <View style={{ marginTop: 12, marginBottom: 20 }}>
-          <NeonBarButton 
-            title="NEXT SET" 
-            onPress={handleSkipRest}
-            colors={{ 
-              primary: tokens.brand.primary, 
-              secondary: tokens.brand.secondary 
-            }}
-            height={52}
-          />
-        </View>
+        {/* NO MORE "NEXT SET" BUTTON - Skip is in bridge position now */}
       </>
     );
   }
@@ -1109,6 +1139,42 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: 'center',
   },
+
+  // REST Timer Container - wider than repContainer to fit timer text
+  restTimerContainer: {
+    width: 320,  // Wider than repContainer (260) to accommodate "1:45" format
+    height: 200, // Same height as repContainer
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    position: 'relative',
+  },
+
+  // REST Timer Text - styled like rep number but optimized for time format
+  restTimerText: {
+    position: 'absolute',
+    top: 65,
+    left: 0,
+    right: 0,
+    fontFamily: 'IBMPlexMono_700Bold',  // Same font as Active state
+    fontSize: 90,  // Slightly smaller than reps (100) since "1:45" is wider
+    lineHeight: 90,
+    color: tokens.text.primary,
+    fontWeight: '900',
+    textAlign: 'center',
+    textShadowColor: tokens.brand.secondary,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
+    letterSpacing: 2,
+  },
+
+  // Skip Bridge - enhanced version of bridge with subtle background
+  skipBridge: {
+    backgroundColor: 'rgba(0, 230, 255, 0.15)', // Subtle cyan background
+    borderWidth: 1,
+    borderColor: tokens.brand.secondary,
+    borderRadius: 8,
+  },
+
   // Removed quoteTextDirect - now using QuoteChipMeasured component
 })
 
