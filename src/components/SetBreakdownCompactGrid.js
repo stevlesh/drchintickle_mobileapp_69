@@ -4,7 +4,7 @@ import { colors } from '../theme/typography';
 import { tokens } from '../theme/tokens';
 import { Cigarette } from 'phosphor-react-native';
 
-export default function SetBreakdownCompactGrid({ data }) {
+export default function SetBreakdownCompactGrid({ data, showTotal = true }) {
   const total = data.reduce((sum, x) => sum + Number(x.v || 0), 0);
 
   return (
@@ -18,7 +18,7 @@ export default function SetBreakdownCompactGrid({ data }) {
           accessibilityElementsHidden
           importantForAccessibility="no"
         />
-        <Text style={styles.headerText}>SET BREAKDOWN</Text>
+        <Text style={styles.headerText}>REPS COMPLETED</Text>
       </View>
 
       {/* 4 × 2 scoreboard grid */}
@@ -45,11 +45,13 @@ export default function SetBreakdownCompactGrid({ data }) {
         })}
       </View>
 
-      {/* Footer total (unchanged) */}
-      <View style={styles.total} accessible accessibilityLabel={`Total reps ${total}`}>
-        <Text style={styles.totalLabel}>TOTAL REPS</Text>
-        <Text style={styles.totalValue}>{total}</Text>
-      </View>
+      {/* Footer total - conditionally shown */}
+      {showTotal && (
+        <View style={styles.total} accessible accessibilityLabel={`Total reps ${total}`}>
+          <Text style={styles.totalLabel}>TOTAL REPS</Text>
+          <Text style={styles.totalValue}>{total}</Text>
+        </View>
+      )}
     </View>
   );
 }

@@ -20,6 +20,7 @@ export default function NeonBarButton({
   fontFamily = DEFAULTS.fontFamily,
   height = DEFAULTS.height,
   showIcon = true,
+  iconComponent = BeachBall, // Default to BeachBall for backwards compatibility
 }) {
   const palette = { ...DEFAULTS, ...colors };
 
@@ -169,13 +170,13 @@ export default function NeonBarButton({
             </Text>
           </View>
 
-          {/* Beach ball icon after text (conditional) */}
+          {/* Icon after text (conditional, customizable) */}
           {showIcon && (
-            <BeachBall 
-              size={28} 
-              color={palette.secondary} 
-              style={styles.icon}
-            />
+            React.createElement(iconComponent, {
+              size: 28,
+              color: palette.secondary,
+              style: styles.icon
+            })
           )}
         </View>
       </Pressable>

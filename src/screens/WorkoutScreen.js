@@ -5,10 +5,9 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useFocusEffect } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import BackgroundContainer from '../components/BackgroundContainer'
-import GlassCard from '../components/GlassCard'
-import NeonButton from '../components/NeonButton'
 import NeonBarButton from '../components/NeonBarButton'
 import NeonIcon from '../components/NeonIcon'
+import { Cheers } from 'phosphor-react-native'
 import SetBreakdownCompactGrid from '../components/SetBreakdownCompactGrid'
 import WorkoutProgressTracker from '../components/WorkoutProgressTracker'
 import QuoteChipMeasured from '../components/QuoteChipMeasured'
@@ -18,6 +17,22 @@ import { tokens } from '../theme/tokens'
 import { getQuoteWithAuthor, getQuote } from '../utils/quotes'
 import { supabase } from '../lib/supabase';
 import { bus } from '../lib/bus';
+
+// Helper to get pattern label for display
+const getPatternLabel = (patternType, isMaxTest = false) => {
+  if (isMaxTest) return 'MAX TEST';
+
+  const patternMap = {
+    'PYRAMID': 'PYRAMID',
+    'REVERSE_PYRAMID': 'DESCENDING',
+    'EQUAL_SETS': 'EQUAL SETS',
+    'EQUAL': 'EQUAL SETS',
+    'ASCENDING': 'ASCENDING',
+    'DESCENDING': 'DESCENDING',
+  };
+
+  return patternMap[patternType?.toUpperCase()] || patternType?.toUpperCase() || 'VOLUME';
+};
 
 export default function WorkoutScreen({ navigation, route }) {
   // Safe area insets for proper device compatibility
@@ -529,52 +544,85 @@ export default function WorkoutScreen({ navigation, route }) {
     );
   }
 
-  const renderSummary = () => (
-    <>
-      <Text style={styles.title}>WORKOUT COMPLETE!</Text>
-      <View style={styles.celebrationContainer}>
-        <NeonIcon 
-          type="celebration" 
-          size={32} 
-          color={colors.neonYellow}
-          style={styles.celebrationIcon}
-        />
-        <Text style={styles.subtitle}>AMAZING WORK, BEAST!</Text>
-      </View>
+  // InfoChip helper component
+  const InfoChip = ({ label, value }) => (
+    <View style={styles.infoChip}>
+      <Text style={styles.infoChipLabel}>{label}</Text>
+      <Text style={styles.infoChipValue}>{value}</Text>
+    </View>
+  );
 
-      <GlassCard 
-        borderColor={colors.lightBlue} 
-        glowColor={colors.lightBlue}
-        style={styles.actionCard}
-      >
-        {isMaxTestDay ? (
-          <>
-            <Text style={styles.setLabel}>MAX TEST COMPLETED</Text>
-            <Text style={styles.repTarget}>{repsCompleted[0] || 0}</Text>
-            <Text style={styles.repsLabel}>YOUR NEW MAX</Text>
-          </>
-        ) : (
-          <>
-            <Text style={styles.setLabel}>SETS COMPLETED: {totalSets}</Text>
-            <Text style={styles.repTarget}>{repsCompleted.reduce((a, b) => a + b, 0)}</Text>
-            <Text style={styles.repsLabel}>TOTAL REPS</Text>
-          </>
-        )}
-        
-        {/* Display total workout duration */}
-        <Text style={styles.durationSummary}>
-          TOTAL TIME: {formatTime(workoutDuration)}
-        </Text>
-      </GlassCard>
+  const renderSummary = () => {
+    const total = repsCompleted.reduce((a, b) => a + b, 0);
+    const best = repsCompleted.length ? Math.max(...repsCompleted) : 0;
+    const avg = repsCompleted.length ? Math.round(total / repsCompleted.length) : 0;
 
-      <NeonButton 
-        title="FINISH WORKOUT" 
-        onPress={handleFinishWorkout}
-        variant="success"
-        style={styles.actionButton}
-      />
-    </>
-  )
+    // Derive pattern label from workout data
+    const patternLabel = getPatternLabel(pattern, isMaxTestDay);
+
+    return (
+      <>
+        {/* Header & Subheader (same layout as Active/Rest) */}
+        <View style={[styles.headerRow, styles.summaryHeaderRow]}>
+          <Text style={styles.workoutCompleteTitle}>WORKOUT COMPLETE</Text>
+        </View>
+
+        <View style={[styles.subHeaderRow, styles.summarySubHeaderRow]}>
+          {/* left: pattern label replaces "SET X OF Y" */}
+          <Text style={styles.summaryPatternLabel}>{patternLabel}</Text>
+          {/* right: same duration chip you use on Active/Rest */}
+          <DurationChip label="WORKOUT" seconds={workoutDuration} />
+        </View>
+
+        {/* ONE ResultCard */}
+        <View style={[styles.resultCardShadow, { shadowColor: tokens.border.primary }]}>
+          <LinearGradient
+            colors={tokens.component.neonCard.background}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.resultCard}
+          >
+            {/* Hero row */}
+            <View style={styles.resultTopRow}>
+              <View style={styles.heroCol}>
+                <Text style={styles.heroTotal}>{total}</Text>
+              </View>
+
+              <View style={styles.statsChips}>
+                <InfoChip label="BEST" value={best} />
+                <InfoChip label="AVG" value={avg} />
+                {!isMaxTestDay && <InfoChip label="TARGET" value={calculatedTargetReps} />}
+              </View>
+            </View>
+
+            <View style={styles.hairline} />
+
+            {/* 4×2 actual reps grid (no internal total row) */}
+            <SetBreakdownCompactGrid
+              data={repsCompleted.map((v, i) => ({ k: `S${i + 1}`, v: String(v ?? 0) }))}
+              showTotal={false}
+            />
+          </LinearGradient>
+        </View>
+
+        {/* Quote */}
+        <View style={{ marginTop: 12 }}>
+          <QuoteChipMeasured text={currentQuote || "You showed up. That's what counts."} />
+        </View>
+
+        {/* CTA */}
+        <View style={{ marginTop: 12, marginBottom: 20 }}>
+          <NeonBarButton
+            title="TIME 2 PARTY"
+            onPress={handleFinishWorkout}
+            colors={{ primary: tokens.brand.primary, secondary: tokens.brand.secondary }}
+            height={52}
+            iconComponent={Cheers}
+          />
+        </View>
+      </>
+    );
+  };
 
   return (
     <BackgroundContainer>
@@ -1176,5 +1224,95 @@ const styles = StyleSheet.create({
   },
 
   // Removed quoteTextDirect - now using QuoteChipMeasured component
+
+  // New styles for completion state - ResultCard approach
+  resultCardShadow: {
+    borderRadius: 18,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  resultCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: tokens.border.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+  },
+  resultTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center', // Changed from flex-end to center for horizontal alignment
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  heroCol: {
+    flexDirection: 'row',
+    alignItems: 'flex-end'
+  },
+  heroTotal: {
+    ...textStyles.heroNumber,
+    fontSize: 44,
+    // Let React Native auto-calculate lineHeight for natural text flow
+  },
+  statsChips: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center'
+  },
+  hairline: {
+    height: 1,
+    opacity: 0.25,
+    backgroundColor: tokens.border.primary,
+    marginVertical: 8
+  },
+  subHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  subMeta: {
+    ...textStyles.infoLabel
+  },
+
+  // Summary-specific styles
+  summaryHeaderRow: {
+    justifyContent: 'center', // Override space-between to actually center the title
+  },
+  workoutCompleteTitle: {
+    ...textStyles.pageTitle,
+    fontSize: 28, // Reduced from 32 to prevent wrapping
+    textAlign: 'center', // Center the title
+    marginBottom: 0,
+  },
+  summarySubHeaderRow: {
+    justifyContent: 'space-between',
+    // Removed paddingHorizontal - doesn't create space between elements
+  },
+  summaryPatternLabel: {
+    ...textStyles.infoLabel,
+    color: colors.white, // Override gray with white
+    fontWeight: '700', // Make it bold
+    marginRight: 10, // Reduced from 16 - bring pattern and duration pill closer
+  },
+
+  // InfoChip styles
+  infoChip: {
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  infoChipLabel: {
+    ...textStyles.infoLabel,
+    fontSize: 9,
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  infoChipValue: {
+    ...textStyles.heroNumber,
+    fontSize: 16,
+    color: tokens.border.primary,
+  },
 })
 
