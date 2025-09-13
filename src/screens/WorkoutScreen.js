@@ -11,6 +11,7 @@ import { Cheers } from 'phosphor-react-native'
 import SetBreakdownCompactGrid from '../components/SetBreakdownCompactGrid'
 import WorkoutProgressTracker from '../components/WorkoutProgressTracker'
 import QuoteChipMeasured from '../components/QuoteChipMeasured'
+import NeonSnowfall from '../components/NeonSnowfall'
 import { useReduceMotion } from '../hooks/useReduceMotion'
 import { colors, textStyles } from '../theme/typography'
 import { tokens } from '../theme/tokens'
@@ -586,6 +587,7 @@ export default function WorkoutScreen({ navigation, route }) {
             <View style={styles.resultTopRow}>
               <View style={styles.heroCol}>
                 <Text style={styles.heroTotal}>{total}</Text>
+                <Text style={styles.heroLabel}>TOTAL REPS</Text>
               </View>
 
               <View style={styles.statsChips}>
@@ -620,6 +622,9 @@ export default function WorkoutScreen({ navigation, route }) {
             iconComponent={Cheers}
           />
         </View>
+
+        {/* Miami Vice Neon Snowfall Celebration */}
+        <NeonSnowfall count={18} />
       </>
     );
   };
@@ -1247,13 +1252,21 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   heroCol: {
-    flexDirection: 'row',
-    alignItems: 'flex-end'
+    flexDirection: 'row', // Horizontal layout to place label next to number
+    alignItems: 'center' // Center-align to match middle of the number
   },
   heroTotal: {
     ...textStyles.heroNumber,
     fontSize: 44,
     // Let React Native auto-calculate lineHeight for natural text flow
+  },
+  heroLabel: {
+    fontFamily: 'IBMPlexMono_400Regular',
+    fontSize: 12,
+    color: colors.white,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginLeft: 12, // Space between number and label
   },
   statsChips: {
     flexDirection: 'row',

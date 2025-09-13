@@ -18,7 +18,7 @@ export default function SetBreakdownCompactGrid({ data, showTotal = true }) {
           accessibilityElementsHidden
           importantForAccessibility="no"
         />
-        <Text style={styles.headerText}>REPS COMPLETED</Text>
+        <Text style={styles.headerText}>SETS COMPLETED</Text>
       </View>
 
       {/* 4 × 2 scoreboard grid */}
