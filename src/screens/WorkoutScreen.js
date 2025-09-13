@@ -116,7 +116,8 @@ export default function WorkoutScreen({ navigation, route }) {
     const dl = Date.now() + seconds * 1000;
     setDeadline(dl);
     setRestTimeLeft(seconds);   // Show full duration immediately (not 0!)
-    setRestArmed(false);        // Will arm after first recompute tick
+    // Arm immediately for normal durations, delay only for very short rests
+    setRestArmed(seconds > 2);  // Arm immediately if > 2 seconds
     setPageState('resting');    // Render rest UI
   }, []);
 
@@ -143,8 +144,8 @@ export default function WorkoutScreen({ navigation, route }) {
       const secs = Math.ceil(ms / 1000);
       setRestTimeLeft(secs);
       
-      // Arm after first successful recompute so we know deadline is live
-      setRestArmed(true);
+      // Only arm if not already armed (handles short rest edge case)
+      setRestArmed(prev => prev || true);
     }, 250);
     
     return () => clearInterval(interval);
