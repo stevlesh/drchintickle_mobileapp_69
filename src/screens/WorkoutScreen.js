@@ -153,18 +153,25 @@ export default function WorkoutScreen({ navigation, route }) {
   // Handle rest countdown from deadline
   useEffect(() => {
     if (!deadline) return;
-    
+
     const interval = setInterval(() => {
       const ms = Math.max(0, deadline - Date.now());
       const secs = Math.ceil(ms / 1000);
       setRestTimeLeft(secs);
-      
+
+      // Auto-advance when timer hits zero (with safety guards)
+      if (secs === 0 && restArmed && pageState === 'resting') {
+        clearInterval(interval); // Prevent double-firing
+        handleRestComplete();
+        return;
+      }
+
       // Only arm if not already armed (handles short rest edge case)
       setRestArmed(prev => prev || true);
     }, 250);
-    
+
     return () => clearInterval(interval);
-  }, [deadline]);
+  }, [deadline, restArmed, pageState, handleRestComplete]);
   
   // Handle app state changes for workout duration
   useFocusEffect(
