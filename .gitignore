@@ -13,11 +13,16 @@ yarn-error.log*
 # macOS metadata
 .DS_Store
 
-# Screenshots & other large binaries (keep graphics in assets/ checked-in separately)
+# Screenshots & other large binaries
 screenshots/
-*.png
-*.jpg
-*.jpeg
+screenshots/*.png
+screenshots/*.jpg
+screenshots/*.jpeg
+
+# Allow images in src/assets/ for app icons and graphics
+!src/assets/**/*.png
+!src/assets/**/*.jpg
+!src/assets/**/*.jpeg
 
 # Expo web cache
 .expo/web/cache/

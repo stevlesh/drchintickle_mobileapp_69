@@ -5,12 +5,12 @@
     "scheme": "drchintickle",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/icons/sessions.png",
+    "icon": "./src/assets/icons/app-icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./src/assets/icons/sessions.png",
+      "image": "./src/assets/icons/app-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#D946EF"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -29,8 +29,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/icons/sessions.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./src/assets/icons/app-icon.png",
+        "backgroundColor": "#D946EF"
       },
       "package": "com.drchintickle.app",
       "intentFilters": [
@@ -46,7 +46,7 @@
       ]
     },
     "web": {
-      "favicon": "./src/assets/icons/sessions.png",
+      "favicon": "./src/assets/icons/app-icon.png",
       "bundler": "metro"
     },
     "runtimeVersion": "exposdk:53.0.0",
