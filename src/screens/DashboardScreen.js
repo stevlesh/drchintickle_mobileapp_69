@@ -13,6 +13,7 @@ import NeonIcon from '../components/NeonIcon';
 import { colors, textStyles } from '../theme/typography';
 import { tokens } from '../theme/tokens';
 import { supabase } from '../lib/supabase';
+import { bus } from '../lib/bus';
 import { Trophy, RainbowCloud } from 'phosphor-react-native';
 import WorkoutProgressTracker from '../components/WorkoutProgressTracker';
 import { getQuote, getDashboardQuote } from '../utils/quotes';
@@ -36,197 +37,83 @@ const DashboardScreen = ({ navigation }) => {
   });
   const [currentQuote, setCurrentQuote] = useState(null);
   const [quoteContext, setQuoteContext] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Calculate streak based on workout dates
-  const calculateStreak = (workoutDates) => {
-    if (!workoutDates || workoutDates.length === 0) return 0;
-    
-    // Sort dates in descending order (newest first)
-    const sortedDates = [...workoutDates].sort((a, b) => new Date(b) - new Date(a));
-    
-    // Get today's date without time
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Get yesterday's date
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    // Check if the most recent workout was today or yesterday
-    const mostRecentDate = new Date(sortedDates[0]);
-    mostRecentDate.setHours(0, 0, 0, 0);
-    
-    // If the most recent workout wasn't today or yesterday, no current streak
-    if (mostRecentDate < yesterday) {
-      return 0;
-    }
-    
-    // Count consecutive days
-    let streak = 1;
-    let currentDate = mostRecentDate;
-    
-    for (let i = 1; i < sortedDates.length; i++) {
-      const prevDate = new Date(sortedDates[i]);
-      prevDate.setHours(0, 0, 0, 0);
-      
-      // Check if the previous date is exactly one day before current date
-      const expectedPrevDate = new Date(currentDate);
-      expectedPrevDate.setDate(expectedPrevDate.getDate() - 1);
-      
-      if (prevDate.getTime() === expectedPrevDate.getTime()) {
-        streak++;
-        currentDate = prevDate;
-      } else {
-        break;
-      }
-    }
-    
-    return streak;
-  };
-
-  // Fetch just stats (sessions, streak, current max) - no workout data
-  const fetchUserStats = async () => {
+  // Fetch dashboard stats from server (replaces client-side calculations)
+  const fetchDashboardStats = async () => {
     try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError) {
-        console.error('Auth error in fetchUserStats:', authError);
-        return;
-      }
-      if (!user) {
-        console.log('No user found in fetchUserStats');
-        return;
-      }
-      
-      console.log('fetchUserStats: Found user:', user.id);
-      
-      // Fetch profile with error handling
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      if (profileError) {
-        console.error('Profile fetch error:', profileError);
-        return;
-      }
-      
-      if (!profile) {
-        console.log('No profile found for user:', user.id);
-        return;
-      }
-      
-      // Fetch workout sessions with error handling
-      const { data: workoutSessions, error: sessionsError } = await supabase
-        .from('workout_sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('workout_date', { ascending: false });
-      
-      if (sessionsError) {
-        console.error('Workout sessions fetch error:', sessionsError);
-        // Continue with empty sessions array
-      }
-      
-      // Calculate stats
-      const totalSessions = workoutSessions?.length || 0;
-      
-      // Extract workout dates for streak calculation
-      const workoutDates = workoutSessions?.map(session => session.workout_date) || [];
-      const currentStreak = calculateStreak(workoutDates);
-      
-      // For new users, show 0 as the current max until they complete the max test
-      const userMax = profile.current_max_pullups !== null ? profile.current_max_pullups : 0;
-      
-      // Update only stats, keep existing workout data
-      setUserStats(prev => ({
-        ...prev,
-        currentMax: userMax,
-        totalSessions: totalSessions,
-        currentStreak: currentStreak,
-      }));
-    } catch (error) {
-      console.error('Error fetching user stats:', error);
-    }
-  };
+      const { data, error } = await supabase.rpc('get_dashboard_stats');
 
+      if (error) throw error;
+      if (!data) return null;
 
-  // Fetch complete data including workout info - used on initial load
-  const fetchCompleteData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
-    try {
-      // Fetch profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      if (!profile) return;
-      
-      // Fetch workout sessions
-      const { data: workoutSessions } = await supabase
-        .from('workout_sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('workout_date', { ascending: false });
-      
-      // Calculate stats
-      const totalSessions = workoutSessions?.length || 0;
-      
-      // Extract workout dates for streak calculation
-      const workoutDates = workoutSessions?.map(session => session.workout_date) || [];
-      const currentStreak = calculateStreak(workoutDates);
-      
-      // Determine next workout info
-      const workoutNum = profile.current_workout_in_cycle || 1;
-      
-      // For new users, show 0 as the current max until they complete the max test
-      const userMax = profile.current_max_pullups !== null ? profile.current_max_pullups : 0;
-      const cycleStartMax = profile.cycle_start_max !== null ? profile.cycle_start_max : userMax;
-      
+      // Generate workout plan based on server data
       const nextWorkout = await generateWorkout({
-        workoutNum,
-        userMax,
-        cycleStartMax,
+        workoutNum: data.current_workout_in_cycle || 1,
+        userMax: data.current_max_pullups || 0,
+        cycleStartMax: data.cycle_start_max || data.current_max_pullups || 0,
       });
-      
-      console.log('Next workout data:', nextWorkout);
-      
+
+      // Update all stats at once
       setUserStats({
-        currentMax: userMax,
-        totalSessions: totalSessions,
-        currentStreak: currentStreak,
-        nextWorkout: {
-          workoutNum,
-          ...nextWorkout,
-        },
+        currentMax: data.current_max_pullups,
+        totalSessions: data.total_sessions,
+        currentStreak: data.current_streak,
+        nextWorkout: nextWorkout,
       });
-      
+
+      console.log('Dashboard stats updated:', {
+        sessions: data.total_sessions,
+        streak: data.current_streak,
+        workout: data.current_workout_in_cycle,
+        hasWorkoutToday: data.has_workout_today
+      });
+
+      return data; // Return for retry logic
     } catch (error) {
-      console.error('Error fetching complete data:', error);
+      console.error('Error fetching dashboard stats:', error);
+      return null;
     }
   };
+
 
   // Initial data load
   useEffect(() => {
-    fetchCompleteData(); // Load everything on mount
+    fetchDashboardStats(); // Load everything on mount
     const { quote, context } = getDashboardQuote();
     setCurrentQuote(quote);
     setQuoteContext(context);
   }, []);
 
-  // Add loading state to prevent multiple simultaneous fetches
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Listen for workout completion with two-shot micro-retry
+  useEffect(() => {
+    const unsubscribe = bus.on('workout:completed', async ({ workoutDay }) => {
+      console.log('🎯 Dashboard: Workout completed event received');
 
-  // Refresh complete data (stats + workout info) when screen comes into focus  
+      // First attempt
+      const p1 = await fetchDashboardStats();
+      if (p1?.has_workout_today || p1?.latest_workout_day === workoutDay) {
+        console.log('✅ Dashboard updated on first attempt');
+        return;
+      }
+
+      // Wait and retry once
+      console.log('⏳ Dashboard: Retrying in 350ms...');
+      await new Promise(r => setTimeout(r, 350));
+      await fetchDashboardStats();
+      console.log('✅ Dashboard updated on retry');
+    });
+
+    return unsubscribe;
+  }, []);
+
+
+  // Refresh dashboard data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       if (!isRefreshing) {
         setIsRefreshing(true);
-        fetchCompleteData().finally(() => setIsRefreshing(false)); // Refresh everything including workout patterns
+        fetchDashboardStats().finally(() => setIsRefreshing(false));
       }
       return () => {}; // cleanup function
     }, [])

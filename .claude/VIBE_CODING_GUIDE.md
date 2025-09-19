@@ -295,11 +295,39 @@ const loadDashboardData = async () => {
     supabase.rpc('get_user_app_state'),
     supabase.rpc('get_user_onboarding_status')
   ]);
-  
+
   return {
     appState: appState.data,
     onboarding: onboardingStatus.data[0]
   };
+};
+```
+
+#### `get_dashboard_stats()` - Complete Dashboard Data (NEW!)
+**What it does**: Returns all dashboard statistics in one server-calculated call
+**When to use**: Dashboard screen load, after workout completion
+
+```javascript
+const { data } = await supabase.rpc('get_dashboard_stats');
+
+// Returns:
+{
+  current_max_pullups: 24,       // User's current max
+  current_workout_in_cycle: 5,   // Which workout (1-8)
+  cycle_num: 2,                  // Which cycle
+  total_sessions: 35,            // Total workouts completed
+  current_streak: 3,             // Days in a row (server-calculated with timezone!)
+  latest_workout_day: "2025-09-18", // Most recent workout date
+  has_workout_today: true,       // Boolean flag for today
+  next_workout_pattern: {...},   // Cached workout pattern
+  can_do_eight_pullups: true,
+  has_completed_onboarding: true
+}
+
+// Vibe Coding Pattern:
+const loadDashboard = async () => {
+  const data = await supabase.rpc('get_dashboard_stats');
+  setAllStats(data); // One call, all data, timezone-aware!
 };
 ```
 
