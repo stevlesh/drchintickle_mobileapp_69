@@ -404,22 +404,6 @@ export default function WorkoutScreen({ navigation, route }) {
               <View style={[styles.cornerBracket, styles.bottomLeft]} />
               <View style={[styles.cornerBracket, styles.bottomRight]} />
               
-              {/* Pink radial halo behind number */}
-              <View pointerEvents="none" style={styles.radialWrap}>
-                <Svg width="100%" height="100%" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice">
-                  <Defs>
-                    <RadialGradient id="pinkGlow" cx="50%" cy="50%" r="50%">
-                      <Stop offset="0%" stopColor="#FF2CA3" stopOpacity="0.85" />
-                      <Stop offset="55%" stopColor="#FF2CA3" stopOpacity="0.35" />
-                      <Stop offset="100%" stopColor="#FF2CA3" stopOpacity="0" />
-                    </RadialGradient>
-                  </Defs>
-                  <Circle cx="150" cy="150" r="135" fill="url(#pinkGlow)" />
-                </Svg>
-              </View>
-
-              {/* Pink glow fallback behind number */}
-              <Text style={styles.numGlow}>{String(currentReps).padStart(2, '0')}</Text>
               
               {/* Large rep number with pulse and flicker animation */}
               <Animated.Text style={[
@@ -508,19 +492,6 @@ export default function WorkoutScreen({ navigation, route }) {
             <View style={[styles.cornerBracket, styles.bottomLeft]} />
             <View style={[styles.cornerBracket, styles.bottomRight]} />
 
-            {/* Pink radial halo behind timer (optional, subtle) */}
-            <View pointerEvents="none" style={styles.radialWrap}>
-              <Svg width="100%" height="100%" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice">
-                <Defs>
-                  <RadialGradient id="pinkGlow" cx="50%" cy="50%" r="50%">
-                    <Stop offset="0%" stopColor="#FF2CA3" stopOpacity="0.85" />
-                    <Stop offset="55%" stopColor="#FF2CA3" stopOpacity="0.35" />
-                    <Stop offset="100%" stopColor="#FF2CA3" stopOpacity="0" />
-                  </RadialGradient>
-                </Defs>
-                <Circle cx="150" cy="150" r="135" fill="url(#pinkGlow)" />
-              </Svg>
-            </View>
 
             {/* Timer display - styled like rep number */}
             <Text style={styles.restTimerText}>{formatTime(restTimeLeft)}</Text>
