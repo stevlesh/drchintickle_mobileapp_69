@@ -328,11 +328,15 @@ export default function LoginScreen() {
         >
           <View style={styles.container}>
             <NeonHeader
-              subtitle="THE ROAD TO 69 PULL-UPS"
+              subtitle="THE ROAD TO 69 PULL-UPS IN ONE SET"
               style={styles.header}
             />
 
-            <GlassCard style={styles.loginCard}>
+            <GlassCard
+              style={styles.loginCard}
+              borderColor={colors.electricCyan}
+              glowColor={colors.electricCyan}
+            >
               {/* Email Input */}
               <View style={styles.inputBlock}>
                 <BracketFrame style={{ marginBottom: emailError ? 8 : 0 }}>
