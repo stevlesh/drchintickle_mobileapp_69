@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     fontFamily: 'IBMPlexMono_700Bold',
     color: colors.white,
     textAlign: 'center',
-    letterSpacing: 0.5,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
     marginTop: 0,
   },
