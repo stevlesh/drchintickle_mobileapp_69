@@ -101,3 +101,79 @@ Will list recent commits with dates to find candidate from ~11 days ago and ask 
 
 # Lessons
 *(empty – to be filled as we learn)*
+
+---
+
+# Background and Motivation — Rest Timer (2-minute)
+
+We need a reliable rest timer that:
+- Always auto-advances after exactly 2 minutes between pull-up sets
+- Works correctly when the app is backgrounded/suspended or the user switches apps (Messages, Spotify, etc.)
+- Requires minimal changes now and is App Store–safe
+- Anticipates future local notifications (to alert the user at rest end) without implementing them in this round
+
+# Key Challenges and Analysis — Rest Timer
+
+- iOS suspends JS timers while the app is backgrounded; relying on `setInterval` alone is insufficient.
+- Using a deadline-based approach (store `restDeadlineMs = Date.now() + 120000`) allows catch-up on resume and ensures precise 2-minute behavior.
+- Must prevent double-advance if user taps Skip near 0s while auto-advance fires (add one-shot guard or clear interval before advancing).
+- Ensure final set transitions to `summary` and not back to `active_set`.
+- Prepare clear seams for future local notifications (schedule/cancel around rest start/skip) while keeping this iteration notification-free.
+
+# High-level Task Breakdown — Rest Timer (with success criteria)
+
+1) Planner: Finalize low-lift design (deadline + catch-up, 2-minute fixed)
+   - Success: Documented plan with success criteria and risks; ready for execution.
+
+2) Implement deadline-based rest logic in `src/screens/WorkoutScreen.js`
+   - On rest start: compute `restDeadlineMs = Date.now() + 120000` and persist (AsyncStorage) + set in state.
+   - Update existing countdown effect to derive `restTimeLeft` from `restDeadlineMs` (clamp to 0) and call `handleRestComplete()` at 0.
+   - Success: Foreground behavior unchanged; auto-advances exactly once at 0.
+
+3) Add resume/catch-up handling
+   - On focus/mount or AppState change: read `restDeadlineMs`; if `now >= deadline`, call `handleRestComplete()` immediately, else update `restTimeLeft`.
+   - Success: Returning from Spotify/Messages correctly catches up without extending rest duration.
+
+4) Add one-shot guard / double-trigger safety
+   - Use a `didTriggerRef` (or clear interval prior to advancing) to prevent duplicate transitions; ensure `handleRestComplete()` is idempotent for the rest phase.
+   - Success: Skip near 0s never causes double-advance; no lingering intervals after transition.
+
+5) Persistence utilities
+   - Create a small helper for storing/reading `restDeadlineMs` (e.g., `src/utils/restDeadline.js`) to keep screen code clean.
+   - Success: Single source of truth for persistence; easy to test.
+
+6) Notifications-ready seam (no notifications yet)
+   - Add no-op helpers: `scheduleRestEndNotification(deadlineMs)` and `cancelRestEndNotification()` in a `notifications` utility that currently does nothing (or logs in dev).
+   - Wire calls (but keep them no-op) at rest start/skip so adding `expo-notifications` later is a drop-in.
+   - Success: No runtime dependency on notifications today; future addition requires only implementing the helpers.
+
+7) QA checklist
+   - Auto-advance at 0 occurs exactly once.
+   - Skip near 0 does not double-trigger.
+   - Final set reaches `summary` as expected.
+   - Background/return during rest catches up immediately.
+   - No console warnings about state updates after unmount; no orphaned intervals.
+
+# Project Status Board — Rest Timer
+
+- [ ] 1) Finalize design (Planner)
+- [ ] 2) Implement deadline-based rest logic in `WorkoutScreen`
+- [ ] 3) Add resume/catch-up handling
+- [ ] 4) Add one-shot guard
+- [ ] 5) Add persistence helper for `restDeadlineMs`
+- [ ] 6) Wire notifications-ready no-op helpers (no notifications yet)
+- [ ] 7) Run QA checklist
+
+# Current Status / Progress Tracking (Rest Timer)
+
+- Planner prepared the low-lift, deadline-based design factoring the fixed 2-minute rest and future notifications seam. Awaiting approval to proceed to Executor implementation.
+
+# Executor's Feedback or Assistance Requests (Rest Timer)
+
+- Files likely touched: `src/screens/WorkoutScreen.js`, `src/utils/restDeadline.js` (new), `src/utils/notifications.js` (new, no-op for now).
+- No background modes or native modules needed for this iteration. Notifications will be integrated later via the prepared helpers.
+
+# Lessons (Rest Timer)
+
+- Use deadline-based timing for background resilience; never rely solely on active `setInterval`.
+- Always include a one-shot guard around auto-advance paths that can coincide with user actions.
