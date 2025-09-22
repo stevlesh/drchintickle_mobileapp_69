@@ -31,6 +31,7 @@
     "expo-font": "^13.3.2",
     "expo-haptics": "^14.1.4",
     "expo-linear-gradient": "^14.1.5",
+    "expo-localization": "~16.1.6",
     "expo-status-bar": "~2.2.3",
     "expo-updates": "~0.28.17",
     "expo-web-browser": "^14.2.0",
@@ -46,7 +47,8 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "^0.20.0",
-    "typescript": "~5.8.3"
+    "typescript": "~5.8.3",
+    "victory-native": "^41.20.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
