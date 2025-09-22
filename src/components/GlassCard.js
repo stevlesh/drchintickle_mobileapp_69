@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Platform, Animated } from 'react-native';
+import React from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/typography';
@@ -19,46 +19,6 @@ const GlassCard = ({
   glowIntensity = 1.3,
   shadowIntensity = 0.4
 }) => {
-  // Subtle flicker animation
-  const flickerOpacity = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    const flicker = () => {
-      Animated.sequence([
-        Animated.timing(flickerOpacity, {
-          toValue: 0.75,
-          duration: 50,
-          useNativeDriver: true,
-        }),
-        Animated.timing(flickerOpacity, {
-          toValue: 1,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(flickerOpacity, {
-          toValue: 0.9,
-          duration: 30,
-          useNativeDriver: true,
-        }),
-        Animated.timing(flickerOpacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    };
-
-    // Random flicker every 3-8 seconds
-    const randomFlicker = () => {
-      const delay = Math.random() * 5000 + 3000; // 3-8 seconds
-      setTimeout(() => {
-        flicker();
-        randomFlicker();
-      }, delay);
-    };
-
-    randomFlicker();
-  }, [flickerOpacity]);
   // Neon variant - dual-layer glow system with under-fill
   if (variant === 'neon') {
     const r1 = 18 * glowIntensity;   // inner glow (crisp)
@@ -211,8 +171,8 @@ const GlassCard = ({
         ]}
       />
 
-      {/* Broken neon border overlay - flickering bar sign vibe */}
-      <Animated.View
+      {/* Clean neon border overlay */}
+      <View
         pointerEvents="none"
         style={{
           position: 'absolute',
@@ -223,87 +183,6 @@ const GlassCard = ({
           borderRadius: 16,
           borderWidth: borderWidth,
           borderColor: borderColor,
-          opacity: flickerOpacity,
-        }}
-      />
-
-      {/* Missing corner sections - like broken neon */}
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          top: -1,
-          left: -1,
-          width: 20,
-          height: 20,
-          backgroundColor: 'transparent',
-          borderTopLeftRadius: 16,
-          borderWidth: 3,
-          borderColor: 'rgba(0,0,0,0.8)', // Dark to "break" the corner
-          borderRightColor: 'transparent',
-          borderBottomColor: 'transparent',
-        }}
-      />
-
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          top: -1,
-          right: -1,
-          width: 15,
-          height: 25,
-          backgroundColor: 'transparent',
-          borderTopRightRadius: 16,
-          borderWidth: 2,
-          borderColor: 'rgba(0,0,0,0.9)',
-          borderLeftColor: 'transparent',
-          borderBottomColor: 'transparent',
-        }}
-      />
-
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          bottom: -1,
-          right: -1,
-          width: 18,
-          height: 18,
-          backgroundColor: 'transparent',
-          borderBottomRightRadius: 16,
-          borderWidth: 2.5,
-          borderColor: 'rgba(0,0,0,0.85)',
-          borderLeftColor: 'transparent',
-          borderTopColor: 'transparent',
-        }}
-      />
-
-      {/* Flickering section - intermittent border */}
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          bottom: 20,
-          left: 30,
-          width: 40,
-          height: 3,
-          backgroundColor: 'rgba(0,0,0,0.9)',
-          borderRadius: 1,
-        }}
-      />
-
-      {/* Dim section - like dying neon */}
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          top: 15,
-          right: 25,
-          width: 35,
-          height: 2,
-          backgroundColor: `${borderColor}40`, // Much dimmer
-          borderRadius: 1,
         }}
       />
 
