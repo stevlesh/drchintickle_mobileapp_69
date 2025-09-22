@@ -73,6 +73,12 @@ export const tokens = {
     neonPurpleGlow: '#B866FF', // ELECTRIC neon purple glow - brighter and more vibrant
   },
   
+  // Gradient system for stat cards
+  gradient: {
+    statPink: ['#8b005c', '#3e0066'],
+    statCyan: ['#0066cc', '#003366'],
+  },
+
   // Component-specific tokens
   component: {
     // Tab bar without glass morphism
