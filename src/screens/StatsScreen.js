@@ -3,6 +3,7 @@ import { ScrollView, View, Text, StyleSheet, Dimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import BackgroundContainer from '../components/BackgroundContainer';
 import NeonHeader from '../components/NeonHeader';
+import GainsHeader from '../components/GainsHeader';
 import GlassCard from '../components/GlassCard';
 import StatCard from '../components/StatCard';
 import StatsStatCard from '../components/StatsStatCard';
@@ -45,10 +46,10 @@ const StatsScreen = ({ navigation }) => {
     return (
       <BackgroundContainer>
         <NeonHeader
-          title="Stats"
-          subtitle="Loading your progress..."
-          onBack={() => navigation.goBack()}
+          titleSize={40}
+          style={styles.header}
         />
+        <GainsHeader />
       </BackgroundContainer>
     );
   }
@@ -88,9 +89,11 @@ const StatsScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         <NeonHeader
-          title="Stats"
-          onBack={() => navigation.goBack()}
+          titleSize={40}
+          style={styles.header}
         />
+
+        <GainsHeader />
 
         {/* Hero Chart */}
         <GlassCard style={styles.chartCard}>
@@ -157,8 +160,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    marginBottom: 16,
+  },
   contentContainer: {
-    padding: 20,
+    padding: 24,
     paddingBottom: 40,
   },
   chartCard: {
