@@ -53,6 +53,17 @@
     "typescript": "~5.8.3",
     "victory-native": "41.20.1"
   },
+  "expo": {
+    "install": {
+      "exclude": [
+        "@shopify/react-native-skia",
+        "react-native-reanimated",
+        "react-native-gesture-handler",
+        "victory-native",
+        "babel-preset-expo"
+      ]
+    }
+  },
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "babel-preset-expo": "^54.0.3",
