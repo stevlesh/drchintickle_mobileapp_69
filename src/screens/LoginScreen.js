@@ -10,14 +10,14 @@ import {
   Linking,
   TouchableOpacity
 } from 'react-native'
-import { Eye, EyeSlash } from 'phosphor-react-native'
+import { Eye, EyeSlash, Champagne, Cigarette } from 'phosphor-react-native'
 
 import { supabase } from '../lib/supabase'
 import BackgroundContainer from '../components/BackgroundContainer'
 import NeonHeader from '../components/NeonHeader'
 import GlassCard from '../components/GlassCard'
 import NeonBarButton from '../components/NeonBarButton'
-import BracketFrame from '../components/BracketFrame'
+import UnderlineFrame from '../components/UnderlineFrame'
 import QuoteChipMeasured from '../components/QuoteChipMeasured'
 import { colors, textStyles } from '../theme/typography'
 import { tokens } from '../theme/tokens'
@@ -339,22 +339,25 @@ export default function LoginScreen() {
             >
               {/* Email Input */}
               <View style={styles.inputBlock}>
-                <BracketFrame style={{ marginBottom: emailError ? 8 : 0 }}>
-                  <TextInput
-                    style={styles.inputBare}
-                    placeholder="Email"
-                    placeholderTextColor="#666"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    textContentType="emailAddress"
-                    autoComplete="email"
-                    keyboardType="email-address"
-                    returnKeyType="next"
-                    onSubmitEditing={() => passwordRef.current?.focus()}
-                    editable={!loading}
-                  />
-                </BracketFrame>
+                <UnderlineFrame style={{ marginBottom: emailError ? 8 : 0 }}>
+                  <View style={styles.inputWithIcon}>
+                    <Champagne size={18} color={tokens.brand.secondary} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.inputBare, { paddingLeft: 30 }]}
+                      placeholder="Email"
+                      placeholderTextColor="#666"
+                      value={email}
+                      onChangeText={setEmail}
+                      autoCapitalize="none"
+                      textContentType="emailAddress"
+                      autoComplete="email"
+                      keyboardType="email-address"
+                      returnKeyType="next"
+                      onSubmitEditing={() => passwordRef.current?.focus()}
+                      editable={!loading}
+                    />
+                  </View>
+                </UnderlineFrame>
                 {emailError ? (
                   <Text style={styles.errorText}>{emailError}</Text>
                 ) : null}
@@ -362,11 +365,12 @@ export default function LoginScreen() {
 
               {/* Password Input */}
               <View style={[styles.inputBlock, { marginBottom: 8 }]}>
-                <BracketFrame style={{ marginBottom: passwordError ? 8 : 0 }}>
+                <UnderlineFrame style={{ marginBottom: passwordError ? 8 : 0 }}>
                   <View style={styles.passwordContainer}>
+                    <Cigarette size={18} color={tokens.brand.secondary} style={styles.inputIcon} />
                     <TextInput
                       ref={passwordRef}
-                      style={[styles.inputBare, { paddingRight: 50 }]}
+                      style={[styles.inputBare, { paddingLeft: 30, paddingRight: 50 }]}
                       placeholder="Password"
                       placeholderTextColor="#666"
                       value={password}
@@ -391,7 +395,7 @@ export default function LoginScreen() {
                       )}
                     </TouchableOpacity>
                   </View>
-                </BracketFrame>
+                </UnderlineFrame>
                 {passwordError ? (
                   <Text style={styles.errorText}>{passwordError}</Text>
                 ) : null}
@@ -542,6 +546,15 @@ const styles = StyleSheet.create({
     fontFamily: 'IBMPlexMono_400Regular',
     letterSpacing: 1,
   },
+  inputWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  inputIcon: {
+    position: 'absolute',
+    left: -2,
+    zIndex: 1,
+  },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -578,7 +591,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   forgotLinkText: {
-    color: tokens.brand.secondary,
+    color: tokens.brand.primary, // Changed from secondary (cyan) to primary (pink)
     fontSize: 13,
     fontFamily: 'IBMPlexMono_400Regular',
     letterSpacing: 0.5,
