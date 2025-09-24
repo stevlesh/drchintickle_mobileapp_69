@@ -22,6 +22,7 @@
     "@react-navigation/bottom-tabs": "^7.4.6",
     "@react-navigation/native": "^7.1.14",
     "@react-navigation/native-stack": "^7.3.21",
+    "@shopify/react-native-skia": "2.2.18",
     "@supabase/supabase-js": "^2.50.3",
     "expo": "~53.0.17",
     "expo-auth-session": "~6.2.1",
@@ -41,6 +42,8 @@
     "react-dom": "19.0.0",
     "react-native": "0.79.5",
     "react-native-elements": "^3.4.3",
+    "react-native-gesture-handler": "2.16.2",
+    "react-native-reanimated": "3.19.1",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-svg": "15.11.2",
@@ -48,10 +51,11 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "^0.20.0",
     "typescript": "~5.8.3",
-    "victory-native": "^41.20.1"
+    "victory-native": "41.20.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
+    "babel-preset-expo": "^54.0.3",
     "dotenv": "^17.2.0"
   },
   "private": true
