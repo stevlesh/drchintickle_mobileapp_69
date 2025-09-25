@@ -17,7 +17,7 @@ const { width: screenWidth } = Dimensions.get('window');
 const OutlineNumber = ({ number, color = colors.electricCyan }) => {
   return (
     <Text style={{
-      fontFamily: 'GemunuLibre_700Bold',
+      fontFamily: 'IBMPlexMono_700Bold',
       fontSize: 48,
       color: color,
       textShadowColor: color,
@@ -221,10 +221,10 @@ const OnboardingScreen = ({ navigation }) => {
           </View>
         </View>
         
-        {/* Daily commitment below */}
+        {/* Daily commitment banner below */}
         <View style={styles.dailyCommitment}>
-          <Text style={styles.dailyText}>EVERY SINGLE DAY</Text>
-          <Text style={styles.dailySubtext}>Daily consistency {'>'} sporadic intensity</Text>
+          <Text style={styles.neonBanner}>EVERY SINGLE DAY</Text>
+          <Text style={styles.subheadText}>Daily consistency {'>'} sporadic intensity</Text>
         </View>
       </GlassCard>
 
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontFamily: 'Orbitron_700Bold',
+    fontFamily: 'IBMPlexMono_700Bold',
     marginBottom: 14,
     textAlign: 'center',
     textShadowOffset: { width: 0, height: 0 },
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    fontFamily: 'Orbitron_700Bold',
+    fontFamily: 'IBMPlexMono_700Bold',
     color: colors.electricCyan,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
@@ -400,19 +400,24 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(0, 217, 255, 0.3)',
   },
-  dailyText: {
-    fontSize: 18,
-    fontFamily: 'Orbitron_700Bold',
-    color: colors.neonYellow,
-    textShadowColor: colors.neonYellow,
+  neonBanner: {
+    fontSize: 22,
+    fontFamily: 'IBMPlexMono_700Bold',
+    color: colors.hotPink,
+    textShadowColor: colors.electricCyan,
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 6,
-    marginBottom: 4,
+    textShadowRadius: 12,
+    textAlign: 'center',
+    marginVertical: 8,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
-  dailySubtext: {
-    fontSize: 14,
-    fontFamily: 'Righteous_400Regular',
-    color: colors.lightGray,
+  subheadText: {
+    fontSize: 12,
+    fontFamily: 'IBMPlexMono_700Bold',
+    color: colors.white,
+    textAlign: 'center',
+    marginBottom: 4,
     fontStyle: 'italic',
   },
   cheersButtonContainer: {
