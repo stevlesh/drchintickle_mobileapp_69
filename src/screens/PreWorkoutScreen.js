@@ -165,7 +165,7 @@ const PreWorkoutScreen = ({ route, navigation }) => {
     <BackgroundContainer>
       <ScrollView contentContainerStyle={[
         styles.container,
-        { paddingTop: insets.top + 86, minHeight: '100%', justifyContent: 'flex-start' }
+        { paddingTop: insets.top + 40, minHeight: '100%', justifyContent: 'flex-start' }
       ]}>
         {/* Show loading or content */}
         {workoutData.loading ? (
