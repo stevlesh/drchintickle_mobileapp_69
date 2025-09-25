@@ -174,6 +174,14 @@ const PreWorkoutScreen = ({ route, navigation }) => {
           </View>
         ) : (
           <VStack space={16}>
+            {/* GOAL/MAX section - moved to top for max test days */}
+            {workoutData.isMaxTestDay && (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLbl}>GOAL</Text>
+                <Text style={styles.totalVal}>MAX</Text>
+              </View>
+            )}
+
             {/* Set Breakdown Card */}
             {workoutData.isMaxTestDay ? (
               <View style={[styles.neonCardShadow, { shadowColor: tokens.border.primary }]}>
@@ -192,7 +200,7 @@ const PreWorkoutScreen = ({ route, navigation }) => {
                     <Text style={styles.maxTestHeaderText}>MAX TEST INSTRUCTIONS</Text>
                   </View>
                   <Text style={styles.maxTestInstructions}>
-                    One set. All out. No half-reps. This isn't Planet Fitness. Your max sets the baseline for the next 8 workouts.
+                    One set. All out. No half-reps. This isn't Planet Fitness. Your max sets the baseline for the next 7 workouts.
                   </Text>
                 </LinearGradient>
               </View>
@@ -204,13 +212,6 @@ const PreWorkoutScreen = ({ route, navigation }) => {
                   next: idx === nextSetIndex,
                 })) || []}
               />
-            )}
-
-            {workoutData.isMaxTestDay && (
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLbl}>GOAL</Text>
-                <Text style={styles.totalVal}>MAX</Text>
-              </View>
             )}
 
             {/* Quote */}
