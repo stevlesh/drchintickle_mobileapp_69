@@ -195,7 +195,7 @@ const DashboardScreen = ({ navigation }) => {
         {/* CTA Button */}
         <View style={styles.ctaButton}>
           <NeonBarButton 
-            title={needsMaxTest ? "COMPLETE MAX TEST FIRST" : "GET SWOLE"} 
+            title={needsMaxTest ? "MAX ME DADDY" : "GET SWOLE"} 
             onPress={handleWorkoutPress}
             fontFamily="IBMPlexMono_700Bold"
             colors={{
