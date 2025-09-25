@@ -184,8 +184,7 @@ const PreWorkoutScreen = ({ route, navigation }) => {
                 >
                   <Text style={styles.cardLabel}>MAX TEST INSTRUCTIONS</Text>
                   <Text style={styles.maxTestInstructions}>
-                    Perform a single set of as many pull-ups as you can with good form.
-                    This will set your baseline for the next workouts in the cycle.
+                    One set. All out. No half-reps. This isn't Planet Fitness. Your max sets the baseline for the next 8 workouts.
                   </Text>
                 </LinearGradient>
               </View>
