@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { Cigarette } from 'phosphor-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -182,7 +183,14 @@ const PreWorkoutScreen = ({ route, navigation }) => {
                   end={{ x: 1, y: 1 }}
                   style={styles.setBreakdownCard}
                 >
-                  <Text style={styles.cardLabel}>MAX TEST INSTRUCTIONS</Text>
+                  <View style={styles.maxTestHeader}>
+                    <Cigarette
+                      size={28}
+                      color={colors.electricCyan}
+                      style={{ marginRight: 12 }}
+                    />
+                    <Text style={styles.maxTestHeaderText}>MAX TEST INSTRUCTIONS</Text>
+                  </View>
                   <Text style={styles.maxTestInstructions}>
                     One set. All out. No half-reps. This isn't Planet Fitness. Your max sets the baseline for the next 8 workouts.
                   </Text>
@@ -254,13 +262,18 @@ const styles = StyleSheet.create({
     borderColor: tokens.border.primary,
     padding: 16,
   },
-  cardLabel: {
+  maxTestHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8
+  },
+  maxTestHeaderText: {
     fontFamily: 'IBMPlexMono_400Regular',
     fontSize: 12,
-    color: colors.mediumGray,
+    color: colors.white,
+    letterSpacing: 1,
     textTransform: 'uppercase',
-    marginBottom: 12,
-    textAlign: 'center',
   },
   maxTestInstructions: {
     fontFamily: 'IBMPlexMono_400Regular',
