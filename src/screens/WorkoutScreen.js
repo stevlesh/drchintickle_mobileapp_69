@@ -48,9 +48,44 @@ export default function WorkoutScreen({ navigation, route }) {
     setBreakdown,
     timerStart = null,
     targetReps = 0,
-    isMaxTestDay = false,
   } = route?.params || {};
-  
+
+  // Derive isMaxTestDay from workoutNum (workout 1 is always max test)
+  const isMaxTestDay = workoutNum === 1;
+
+
+  // Prefetch previous max data for MAX TEST comparison
+  useEffect(() => {
+    if (isMaxTestDay) {
+      const fetchPreviousMax = async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const { data, error } = await supabase
+            .from('workout_sessions')
+            .select('completed_reps, workout_date')
+            .eq('user_id', user.id)
+            .eq('workout_type', 'max_test')
+            .order('workout_date', { ascending: false })
+            .limit(1)
+            .single();
+
+          setPreviousMaxData({
+            max: data?.completed_reps || null,
+            date: data?.workout_date || null,
+            loading: false
+          });
+        } catch (error) {
+          console.log('Previous max fetch (expected for first-time users):', error);
+          setPreviousMaxData({ max: null, date: null, loading: false });
+        }
+      };
+
+      fetchPreviousMax();
+    }
+  }, [isMaxTestDay]);
+
   // Remove fallback array - must use server data
   if (!setBreakdown && !isMaxTestDay) {
     console.error('❌ WorkoutScreen: No setBreakdown provided for non-max test workout');
@@ -70,6 +105,11 @@ export default function WorkoutScreen({ navigation, route }) {
   const [currentQuote, setCurrentQuote] = useState(null);
   const [deadline, setDeadline] = useState(null); // Deadline-based timer for rest
   const [restArmed, setRestArmed] = useState(false); // Blocks auto-complete until first recompute
+
+  // MAX TEST completion data and session key for idempotency
+  const [maxTestData, setMaxTestData] = useState(null);
+  const [previousMaxData, setPreviousMaxData] = useState({ max: null, date: null, loading: true });
+  const sessionKeyRef = useRef(null);
   
   // Animation for rep number pulse and flicker
   const pulseAnim = useRef(new Animated.Value(0)).current;
@@ -115,9 +155,24 @@ export default function WorkoutScreen({ navigation, route }) {
   const appStateRef = useRef(AppState.currentState);
   const REST_DURATION_SEC = 120; // 2 minutes rest
 
-  // Log route params for debugging (dev only, minimal deps)
+  // Generate session key when workout starts
   useEffect(() => {
-    if (__DEV__) console.log('WorkoutScreen params:', { workoutNum, workoutType });
+    // Generate UUID v4 compatible session key
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      sessionKeyRef.current = crypto.randomUUID();
+    } else {
+      // Fallback for older environments
+      sessionKeyRef.current = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    if (__DEV__) {
+      console.log('WorkoutScreen params:', { workoutNum, workoutType });
+      console.log('WorkoutScreen session key:', sessionKeyRef.current);
+    }
   }, [workoutNum, workoutType]);
 
   // Update workout duration timer
@@ -229,85 +284,154 @@ export default function WorkoutScreen({ navigation, route }) {
     }
   }
 
+  // Handle MAX TEST commit (called from TIME 2 PARTY button)
+  const handleMaxTestCommit = async () => {
+    // Calculate final metrics (freeze once)
+    const finalDurationSeconds = Math.floor((Date.now() - workoutStartTimeRef.current) / 1000);
+    const completedReps = repsCompleted.reduce((a, b) => a + b, 0);
+    const occurredAt = new Date().toISOString();
+
+    // Get user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('No user found');
+      return;
+    }
+
+    try {
+      // Single atomic RPC call handles both max test recording AND cycle progression
+      const { data, error } = await supabase.rpc('record_max_test_and_progress', {
+        p_reps: completedReps,
+        p_duration_sec: finalDurationSeconds,
+        p_occurred_at: occurredAt,
+        p_session_key: sessionKeyRef.current,
+        p_sets_data: JSON.stringify(repsCompleted)
+      });
+
+      if (error) {
+        console.error('❌ MAX TEST RPC Error:', error);
+        // Show error but allow retry
+        return;
+      } else if (data && data.length > 0) {
+        console.log('✅ MAX TEST RPC Success:', data);
+        const result = data[0];
+        console.log(`✅ MAX TEST complete: ${result.new_max} reps (${result.delta > 0 ? '+' : ''}${result.delta})`);
+        console.log(`🚀 Advanced to cycle ${result.next_cycle_num}, workout ${result.next_workout_num}`);
+      }
+
+      // Navigate back to dashboard
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Main' }],
+      });
+
+    } catch (error) {
+      console.error('MAX TEST commit error:', error);
+    }
+  };
+
   const handleFinishWorkout = async () => {
     // Clear workout timer
     if (workoutTimerRef.current) {
       clearInterval(workoutTimerRef.current);
       workoutTimerRef.current = null;
     }
-    
-    // Calculate final duration based on actual elapsed time
-    const finalDurationSeconds = Math.floor((Date.now() - workoutStartTimeRef.current) / 1000);
-    
-    // Save workout session to Supabase
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const completedReps = repsCompleted.reduce((a, b) => a + b, 0);
-      const durationMinutes = Math.round(finalDurationSeconds / 60);
-      
-      // Get profile for later use in pre-generation
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('current_max_pullups, cycle_start_max')
-        .eq('id', user.id)
-        .single();
 
-      // For max test day, update user's current max
+    // Calculate final metrics (freeze once)
+    const finalDurationSeconds = Math.floor((Date.now() - workoutStartTimeRef.current) / 1000);
+    const completedReps = repsCompleted.reduce((a, b) => a + b, 0);
+    const occurredAt = new Date().toISOString();
+
+    // Get user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('No user found');
+      return;
+    }
+
+    try {
       if (isMaxTestDay) {
-        await supabase.from('profiles').update({
-          current_max_pullups: completedReps,
-          cycle_start_max: completedReps
-        }).eq('id', user.id);
-      }
-      
-      await supabase.from('workout_sessions').insert({
-        user_id: user.id,
-        workout_date: new Date().toISOString(),
-        workout_type: isMaxTestDay ? 'max_test' : 'volume',
-        target_reps: isMaxTestDay ? null : calculatedTargetReps,
-        completed_reps: completedReps,
-        sets_data: JSON.stringify(repsCompleted),
-        duration_minutes: durationMinutes,
-      });
-      
-      // Use atomic progression via complete_workout RPC
-      const { data: nextState, error: progressError } = await supabase
-        .rpc('complete_workout');
-      
-      if (progressError) {
-        console.error('❌ Error progressing workout:', progressError);
+        // For MAX TEST, just show summary - RPC will be called when user presses "TIME 2 PARTY"
+        console.log('✅ MAX TEST summary ready - waiting for user to commit');
       } else {
-        const newCycle = nextState?.[0]?.cycle_num;
-        const newWorkout = nextState?.[0]?.workout_num;
-        console.log(`✅ Advanced to cycle ${newCycle}, workout ${newWorkout}`);
-        
-        // Pre-generate next workout plan and cache it
-        try {
-          const { generateWorkout } = await import('../utils/workoutApi');
-          const nextPlan = await generateWorkout({
-            userId: user.id,
-            cycleNum: newCycle,
-            workoutNum: newWorkout,
-            userMax: profile?.current_max_pullups,
-            cycleStartMax: profile?.cycle_start_max
-          });
-          console.log('🎯 Pre-generated next workout plan:', nextPlan.patternName || 'Max Test');
-        } catch (pregenError) {
-          console.warn('⚠️ Failed to pre-generate next workout:', pregenError);
+        // Regular volume workout
+        const durationMinutes = Math.round(finalDurationSeconds / 60);
+
+        await supabase.from('workout_sessions').insert({
+          user_id: user.id,
+          workout_date: occurredAt,
+          workout_type: 'volume',
+          target_reps: calculatedTargetReps,
+          completed_reps: completedReps,
+          sets_data: JSON.stringify(repsCompleted),
+          duration_minutes: durationMinutes,
+          duration_sec: finalDurationSeconds,
+          session_key: sessionKeyRef.current
+        });
+
+        // Progress regular workout cycle
+        const { error: progressError } = await supabase.rpc('complete_workout');
+        if (progressError) {
+          console.error('Error progressing workout cycle:', progressError);
         }
       }
+
+      // Pre-generate next workout (use progression data from RPC if MAX TEST)
+      try {
+        const { generateWorkout } = await import('../utils/workoutApi');
+
+        let nextCycle, nextWorkout, userMax, cycleStartMax;
+
+        if (isMaxTestDay && maxTestData) {
+          // Use data from RPC response
+          nextCycle = maxTestData.nextCycle;
+          nextWorkout = maxTestData.nextWorkout;
+          userMax = maxTestData.newMax; // New max just set
+          cycleStartMax = maxTestData.newMax;
+        } else {
+          // Get from database for regular workouts
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('cycle_num, current_workout_in_cycle, current_max_pullups, cycle_start_max')
+            .eq('id', user.id)
+            .single();
+
+          nextCycle = profile?.cycle_num;
+          nextWorkout = profile?.current_workout_in_cycle;
+          userMax = profile?.current_max_pullups;
+          cycleStartMax = profile?.cycle_start_max;
+        }
+
+        const nextPlan = await generateWorkout({
+          userId: user.id,
+          cycleNum: nextCycle,
+          workoutNum: nextWorkout,
+          userMax,
+          cycleStartMax
+        });
+
+        console.log('🎯 Pre-generated next workout:', nextPlan.patternName || 'Max Test');
+      } catch (pregenError) {
+        console.warn('⚠️ Failed to pre-generate next workout:', pregenError);
+      }
+
+    } catch (error) {
+      console.error('Error saving workout:', error);
     }
-    
-    // Reset WorkoutStack to PreWorkout screen, then navigate to Home
+
+    // Navigate
     navigation.reset({
       index: 0,
       routes: [{ name: 'PreWorkout' }]
     });
     navigation.navigate('Home');
-    
-    // Then emit workout completion event after navigation to avoid updating unmounted component
+
+    // Emit completion event
     setTimeout(() => {
-      bus.emit('workout:completed', { at: Date.now() });
+      bus.emit('workout:completed', {
+        at: Date.now(),
+        workoutDay: isMaxTestDay ? 1 : (workoutNum + 1)
+      });
     }, 100);
   }
 
@@ -531,6 +655,73 @@ export default function WorkoutScreen({ navigation, route }) {
     </View>
   );
 
+  // Function to render MAX TEST completion summary
+  const renderMaxTestSummary = () => {
+    // Use local completed reps as the new max
+    const newMax = repsCompleted.reduce((a, b) => a + b, 0);
+    const previousMax = previousMaxData.max;
+    const previousDate = previousMaxData.date;
+    const isFirstEver = previousMax === null;
+    const delta = isFirstEver ? 0 : newMax - previousMax;
+
+    return (
+      <>
+        {/* Header & Subheader */}
+        <View style={[styles.headerRow, styles.summaryHeaderRow]}>
+          <Text style={styles.workoutCompleteTitle}>MAX TEST COMPLETE</Text>
+        </View>
+
+        <View style={[styles.subHeaderRow, styles.summarySubHeaderRow]}>
+          <Text style={styles.summaryPatternLabel}>MAX TEST</Text>
+          <DurationChip label="WORKOUT" seconds={workoutDuration} />
+        </View>
+
+        {/* MAX TEST Result Card */}
+        <View style={[styles.resultCardShadow, { shadowColor: tokens.border.primary }]}>
+          <LinearGradient
+            colors={tokens.component.neonCard.background}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.resultCard}
+          >
+            {/* Top Half: NEW MAX Display */}
+            <View style={styles.maxTestTopHalf}>
+              <Text style={styles.maxTestHeroNumber}>{newMax}</Text>
+              <Text style={styles.maxTestHeroLabel}>NEW MAX</Text>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.maxTestDivider} />
+
+            {/* Bottom Half: Previous Max Info or Baseline */}
+            <View style={styles.maxTestBottomHalf}>
+              {previousMaxData.loading ? (
+                <Text style={styles.maxTestLoadingText}>CALCULATING...</Text>
+              ) : isFirstEver ? (
+                <Text style={styles.maxTestBaselineText}>BASELINE ESTABLISHED</Text>
+              ) : (
+                <>
+                  <Text style={styles.maxTestPreviousText}>PREVIOUS: {previousMax}</Text>
+                  {previousDate && (
+                    <Text style={styles.maxTestDateText}>
+                      DATE: {new Date(previousDate).toLocaleDateString()}
+                    </Text>
+                  )}
+                </>
+              )}
+            </View>
+
+          </LinearGradient>
+        </View>
+
+        {/* Quote */}
+        <View style={{ marginTop: 12 }}>
+          <QuoteChipMeasured text={currentQuote || "You showed up. That's what counts."} />
+        </View>
+      </>
+    );
+  };
+
   const renderSummary = () => {
     const total = repsCompleted.reduce((a, b) => a + b, 0);
     const best = repsCompleted.length ? Math.max(...repsCompleted) : 0;
@@ -594,7 +785,7 @@ export default function WorkoutScreen({ navigation, route }) {
         <View style={{ marginTop: 12, marginBottom: 20 }}>
           <NeonBarButton
             title="TIME 2 PARTY"
-            onPress={handleFinishWorkout}
+            onPress={isMaxTestDay ? handleMaxTestCommit : handleFinishWorkout}
             colors={{ primary: tokens.brand.primary, secondary: tokens.brand.secondary }}
             height={52}
             iconComponent={Cheers}
@@ -617,7 +808,7 @@ export default function WorkoutScreen({ navigation, route }) {
         <View style={styles.container}>
           {pageState === 'active_set' && renderActiveSet()}
           {pageState === 'resting' && renderResting()}
-          {pageState === 'summary' && renderSummary()}
+          {pageState === 'summary' && (isMaxTestDay ? renderMaxTestSummary() : renderSummary())}
 
           <View style={{ marginTop: 60 }}> 
             <NeonBarButton 
@@ -1304,6 +1495,63 @@ const styles = StyleSheet.create({
     ...textStyles.heroNumber,
     fontSize: 16,
     color: tokens.border.primary,
+  },
+
+  // MAX TEST specific styles - Clean top/bottom layout
+  maxTestTopHalf: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  maxTestHeroNumber: {
+    ...textStyles.heroNumber,
+    fontSize: 48,
+    color: colors.electricCyan,
+  },
+  maxTestHeroLabel: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 14,
+    color: colors.white,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginTop: 4,
+  },
+  maxTestDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginHorizontal: 16,
+  },
+  maxTestBottomHalf: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  maxTestPreviousText: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 12,
+    color: colors.white,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  maxTestDateText: {
+    fontFamily: 'IBMPlexMono_400Regular',
+    fontSize: 10,
+    color: colors.mediumGray,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  maxTestBaselineText: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 12,
+    color: colors.electricCyan,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  maxTestLoadingText: {
+    fontFamily: 'IBMPlexMono_400Regular',
+    fontSize: 10,
+    color: colors.electricCyan,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 })
 
