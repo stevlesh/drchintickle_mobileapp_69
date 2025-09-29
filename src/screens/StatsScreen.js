@@ -199,14 +199,13 @@ const styles = StyleSheet.create({
   consistencyContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingLeft: 10,
+    paddingLeft: 15,
     paddingRight: 30,
   },
   circleContainer: {
-    width: 55,
-    height: 55,
-    borderRadius: 27.5,
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
     borderWidth: 2.5,
     borderColor: colors.neonYellow,
     justifyContent: 'center',
@@ -218,14 +217,18 @@ const styles = StyleSheet.create({
   },
   circlePercentage: {
     fontFamily: 'IBMPlexMono_700Bold',
-    fontSize: 16,
+    fontSize: 14,
     color: colors.neonYellow,
     textShadowColor: colors.neonYellow,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 6,
+    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   textSection: {
     justifyContent: 'center',
+    marginLeft: 20,
   },
   consistencyTitle: {
     fontFamily: 'IBMPlexMono_600SemiBold',

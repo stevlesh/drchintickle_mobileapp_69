@@ -12,6 +12,10 @@ import SetBreakdownCompactGrid from '../components/SetBreakdownCompactGrid'
 import WorkoutProgressTracker from '../components/WorkoutProgressTracker'
 import QuoteChipMeasured from '../components/QuoteChipMeasured'
 import NeonSnowfall from '../components/NeonSnowfall'
+// Premium components for Max Test completion
+import NeonGlowFrame from '../components/premium/NeonGlowFrame'
+import NeonNumber from '../components/premium/NeonNumber'
+import NeonBadge from '../components/premium/NeonBadge'
 import { useReduceMotion } from '../hooks/useReduceMotion'
 import { colors, textStyles } from '../theme/typography'
 import { tokens } from '../theme/tokens'
@@ -289,6 +293,24 @@ export default function WorkoutScreen({ navigation, route }) {
     // Calculate final metrics (freeze once)
     const finalDurationSeconds = Math.floor((Date.now() - workoutStartTimeRef.current) / 1000);
     const completedReps = repsCompleted.reduce((a, b) => a + b, 0);
+
+    // VALIDATION: Prevent state loss from component re-mounts
+    const finalReps = completedReps > 0 ? completedReps : currentReps;
+
+    // DEBUG: Log all values to understand what's happening
+    console.log('🔍 MAX TEST DEBUG:', {
+      repsCompleted,
+      completedReps,
+      currentReps,
+      finalReps,
+      sessionKey: sessionKeyRef.current
+    });
+
+    if (finalReps <= 0) {
+      alert('Error: No reps recorded. Please adjust your reps and try again.');
+      return;
+    }
+
     const occurredAt = new Date().toISOString();
 
     // Get user
@@ -300,13 +322,17 @@ export default function WorkoutScreen({ navigation, route }) {
 
     try {
       // Single atomic RPC call handles both max test recording AND cycle progression
-      const { data, error } = await supabase.rpc('record_max_test_and_progress', {
-        p_reps: completedReps,
+      const rpcParams = {
+        p_reps: finalReps, // Use validated reps
         p_duration_sec: finalDurationSeconds,
         p_occurred_at: occurredAt,
         p_session_key: sessionKeyRef.current,
-        p_sets_data: JSON.stringify(repsCompleted)
-      });
+        p_sets_data: JSON.stringify(repsCompleted.length > 0 ? repsCompleted : [finalReps])
+      };
+
+      console.log('🚀 RPC Parameters being sent:', rpcParams);
+
+      const { data, error } = await supabase.rpc('record_max_test_and_progress', rpcParams);
 
       if (error) {
         console.error('❌ MAX TEST RPC Error:', error);
@@ -655,7 +681,7 @@ export default function WorkoutScreen({ navigation, route }) {
     </View>
   );
 
-  // Function to render MAX TEST completion summary
+  // Function to render MAX TEST completion summary with PREMIUM components
   const renderMaxTestSummary = () => {
     // Use local completed reps as the new max
     const newMax = repsCompleted.reduce((a, b) => a + b, 0);
@@ -663,6 +689,8 @@ export default function WorkoutScreen({ navigation, route }) {
     const previousDate = previousMaxData.date;
     const isFirstEver = previousMax === null;
     const delta = isFirstEver ? 0 : newMax - previousMax;
+    const isPR = !isFirstEver && newMax > previousMax;
+    const isTied = !isFirstEver && newMax === previousMax;
 
     return (
       <>
@@ -676,48 +704,92 @@ export default function WorkoutScreen({ navigation, route }) {
           <DurationChip label="WORKOUT" seconds={workoutDuration} />
         </View>
 
-        {/* MAX TEST Result Card */}
-        <View style={[styles.resultCardShadow, { shadowColor: tokens.border.primary }]}>
+        {/* PREMIUM MAX TEST Result Card with NeonGlowFrame */}
+        <NeonGlowFrame
+          borderRadius={tokens.radius.lg}
+          padding={tokens.spacing.sm}
+          intensity={0.7} // Higher intensity for achievement moments
+          style={{ marginTop: tokens.spacing.md }}
+        >
           <LinearGradient
             colors={tokens.component.neonCard.background}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.resultCard}
+            style={styles.premiumResultCard}
           >
-            {/* Top Half: NEW MAX Display */}
-            <View style={styles.maxTestTopHalf}>
-              <Text style={styles.maxTestHeroNumber}>{newMax}</Text>
-              <Text style={styles.maxTestHeroLabel}>NEW MAX</Text>
+            {/* PREMIUM Number Display with NeonNumber */}
+            <View style={styles.premiumNumberSection}>
+              <NeonNumber
+                value={newMax}
+                label="NEW MAX"
+                fontSize={100}
+                showAnimation={true}
+                glowIntensity={0.5}
+              />
             </View>
 
-            {/* Divider */}
-            <View style={styles.maxTestDivider} />
-
-            {/* Bottom Half: Previous Max Info or Baseline */}
-            <View style={styles.maxTestBottomHalf}>
+            {/* Achievement Badge Section */}
+            <View style={styles.premiumBadgeSection}>
               {previousMaxData.loading ? (
                 <Text style={styles.maxTestLoadingText}>CALCULATING...</Text>
               ) : isFirstEver ? (
-                <Text style={styles.maxTestBaselineText}>BASELINE ESTABLISHED</Text>
+                <NeonBadge
+                  text="BASELINE ESTABLISHED"
+                  variant="baseline"
+                  showIcon={true}
+                  iconType="sunglasses"
+                  tilt={-1.5}
+                />
+              ) : isPR ? (
+                <NeonBadge
+                  text="NEW PERSONAL RECORD"
+                  variant="pr"
+                  showIcon={true}
+                  iconType="martini"
+                  tilt={2}
+                />
+              ) : isTied ? (
+                <NeonBadge
+                  text="TIED PERSONAL RECORD"
+                  variant="tied"
+                  showIcon={true}
+                  iconType="sunglasses"
+                  tilt={-1}
+                />
               ) : (
-                <>
+                /* Show previous max info for regression */
+                <View style={styles.premiumPreviousInfo}>
                   <Text style={styles.maxTestPreviousText}>PREVIOUS: {previousMax}</Text>
                   {previousDate && (
                     <Text style={styles.maxTestDateText}>
                       DATE: {new Date(previousDate).toLocaleDateString()}
                     </Text>
                   )}
-                </>
+                </View>
               )}
             </View>
 
           </LinearGradient>
-        </View>
+        </NeonGlowFrame>
 
         {/* Quote */}
-        <View style={{ marginTop: 12 }}>
+        <View style={{ marginTop: tokens.spacing.lg }}>
           <QuoteChipMeasured text={currentQuote || "You showed up. That's what counts."} />
         </View>
+
+        {/* CTA - CRITICAL: TIME 2 PARTY button commits to Supabase */}
+        <View style={{ marginTop: 12, marginBottom: 20 }}>
+          <NeonBarButton
+            title="TIME 2 PARTY"
+            onPress={handleMaxTestCommit}
+            colors={{ primary: tokens.brand.primary, secondary: tokens.brand.secondary }}
+            height={52}
+            iconComponent={Cheers}
+          />
+        </View>
+
+        {/* Miami Vice Neon Snowfall Celebration */}
+        <NeonSnowfall count={18} />
       </>
     );
   };
@@ -1552,6 +1624,31 @@ const styles = StyleSheet.create({
     color: colors.electricCyan,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+
+  // PREMIUM Max Test Completion Styles
+  premiumResultCard: {
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.border.primary,
+    paddingVertical: tokens.spacing.lg,
+    paddingHorizontal: tokens.spacing.md,
+    minHeight: 200,
+  },
+  premiumNumberSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: tokens.spacing.md,
+    flex: 1,
+  },
+  premiumBadgeSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: tokens.spacing.md,
+    minHeight: 60,
+  },
+  premiumPreviousInfo: {
+    alignItems: 'center',
   },
 })
 
