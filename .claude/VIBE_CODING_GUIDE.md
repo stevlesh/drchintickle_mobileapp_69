@@ -4,6 +4,121 @@
 
 You're vibe coding - meaning you code by feel, learn as you go, and prefer simplicity over complexity. This guide helps Claude understand your constraints and find the right balance between "technically optimal" and "actually doable for you."
 
+### Premium Moments Philosophy 🌟
+
+While you're vibe coding for efficiency, there are **strategic moments** where the UI should feel *premium* and *luxurious* to elevate the entire app's perceived quality. Not everything needs to be fancy, but key moments should feel meticulously crafted.
+
+#### 🎯 When to Go Premium (High-Impact Moments):
+- **Max test completion** - Celebration, achievement reveal, progress visualization
+- **Onboarding screens** - First impression, setting expectations
+- **Workout completion** - Dopamine hit, streak updates, visual rewards
+- **Achievement unlocks** - Badges, milestones, level-ups
+- **Max test comparison** - Before/after, progress charts, delta animations
+- **App launch** - Loading screen, splash, initial reveal
+
+#### 🎨 What "Premium" Means:
+- **Smooth animations** - 60fps, physics-based spring animations, micro-interactions
+- **Haptic feedback** - Subtle vibrations at key moments (button press, achievement unlock)
+- **Sound design** - Optional satisfying sound effects (ding on completion, whoosh on swipe)
+- **Glass morphism** - Blur effects, translucent layers, depth
+- **Particle effects** - Confetti on achievements, glows on progress
+- **Custom typography** - Miami Vice fonts at perfect sizes with proper spacing
+- **Gradient overlays** - Animated gradients, color transitions
+- **Smooth transitions** - Between screens, loading states, data updates
+
+#### 🚫 Where to Keep It Simple (Low-Impact):
+- **Settings screens** - Functional, clean, but not fancy
+- **Navigation tabs** - Clear and usable, don't overdo it
+- **Form inputs** - Good UX over fancy effects
+- **Error messages** - Clear communication over animation
+- **List items** - Clean and scannable
+- **Background elements** - Supportive, not distracting
+
+#### 💡 Premium Moment Examples:
+
+**Max Test Completion:**
+```javascript
+// Premium treatment: Multi-step reveal with animations
+1. Fade out workout UI with spring animation
+2. Dramatic pause (500ms)
+3. Slide in "New Max" card with glow effect
+4. Count up animation showing reps (15 → 22)
+5. Show delta with color flash (+7 in neon green)
+6. Confetti burst
+7. Haptic success pattern (3 quick pulses)
+8. Optional victory sound
+9. Smooth transition to updated dashboard
+```
+
+**Regular Workout Completion:**
+```javascript
+// Standard treatment: Quick and clear
+1. Fade out sets
+2. Checkmark animation
+3. Simple "Complete!" message
+4. Navigate to dashboard
+```
+
+#### 🎬 Premium Animation Patterns:
+
+**Spring Physics** (React Native Reanimated):
+```javascript
+// Feels expensive and polished
+withSpring(toValue, {
+  damping: 15,
+  stiffness: 150,
+  mass: 1
+})
+```
+
+**Stagger Animations** (Cards appearing):
+```javascript
+// Each item delays by 100ms - feels choreographed
+items.map((item, i) => ({
+  ...item,
+  delay: i * 100
+}))
+```
+
+**Number Count-Up** (Stats revealing):
+```javascript
+// Animate from 0 to final value - feels dynamic
+useEffect(() => {
+  Animated.timing(animValue, {
+    toValue: finalValue,
+    duration: 1200,
+    easing: Easing.out(Easing.cubic)
+  }).start();
+}, [finalValue]);
+```
+
+#### 🛠️ Implementation Strategy:
+
+**For You (Vibe Coder):**
+1. Identify the premium moment (e.g., "max test completion should feel epic")
+2. Describe the vibe you want ("dramatic reveal with celebration")
+3. I'll provide the animation code and implementation
+4. You integrate and tweak timing until it feels right
+
+**For Claude (Me):**
+1. Provide complete, copy-paste-ready animation code
+2. Include timing values that can be easily adjusted
+3. Use React Native Animated or Reanimated (already in your stack)
+4. Keep it performant (60fps on real devices)
+5. Make it easy to disable for testing
+
+#### 📦 Premium Polish Checklist:
+
+- [ ] Does it have smooth, physics-based motion?
+- [ ] Does it use haptics at the right moment?
+- [ ] Does it respect the Miami Vice aesthetic?
+- [ ] Is the timing dramatic without being slow?
+- [ ] Does it add to the dopamine hit?
+- [ ] Is it performant (no jank)?
+- [ ] Can you easily tweak the timing values?
+
+**Remember**: Premium moments are about *feeling* more than *looking*. The animations, haptics, and timing create emotional impact. These moments make users think "this app is well-made" even if the rest is simpler.
+
 ## Your Strengths & Preferences
 
 ### ✅ What You're Comfortable With
@@ -303,7 +418,7 @@ const loadDashboardData = async () => {
 };
 ```
 
-#### `get_dashboard_stats()` - Complete Dashboard Data (NEW!)
+#### `get_dashboard_stats()` - Complete Dashboard Data
 **What it does**: Returns all dashboard statistics in one server-calculated call
 **When to use**: Dashboard screen load, after workout completion
 
@@ -328,6 +443,111 @@ const { data } = await supabase.rpc('get_dashboard_stats');
 const loadDashboard = async () => {
   const data = await supabase.rpc('get_dashboard_stats');
   setAllStats(data); // One call, all data, timezone-aware!
+};
+```
+
+### 📊 **Stats & Progress Tracking**
+
+#### `get_stats_data(p_tz)` - Complete Stats Page Data
+**What it does**: Returns all stats page data including max test history, training consistency, and cycle progress
+**When to use**: Stats screen load, when viewing progress history
+
+```javascript
+const { data } = await supabase.rpc('get_stats_data', {
+  p_tz: 'America/New_York'  // User's timezone (optional, defaults to America/New_York)
+});
+
+// Returns:
+{
+  max_test_history: [
+    {
+      test_number: 1,      // First max test, second max test, etc.
+      pullups: 15,         // Reps completed
+      date: "2025-01-15"   // Date of test (YYYY-MM-DD)
+    },
+    {
+      test_number: 2,
+      pullups: 18,
+      date: "2025-02-01"
+    }
+  ],
+  current_cycle: {
+    cycle_num: 2,          // Current cycle number
+    workout_num: 3,        // Current workout (1-8)
+    total_workouts: 8      // Always 8 workouts per cycle
+  },
+  days_since_start: 45,    // Days since first workout
+  training_consistency: {
+    completion_rate: 67,   // Percentage (0-100)
+    completed_days: 30,    // Days with workouts
+    total_days: 45         // Total days since start
+  }
+}
+
+// Vibe Coding Pattern:
+const loadStatsPage = async () => {
+  const { data } = await supabase.rpc('get_stats_data', {
+    p_tz: Intl.DateTimeFormat().resolvedOptions().timeZone // Use device timezone
+  });
+
+  // Display max test progress chart
+  setMaxTestHistory(data.max_test_history);
+
+  // Show training consistency
+  setConsistency(data.training_consistency);
+
+  // Display current cycle progress
+  setCycleInfo(data.current_cycle);
+};
+```
+
+#### `record_max_test_and_progress()` - Record Max Test Results
+**What it does**: Records max test completion, updates user's max, advances to next workout/cycle
+**When to use**: After user completes a max test (workout 1 of any cycle)
+
+```javascript
+const { data } = await supabase.rpc('record_max_test_and_progress', {
+  p_reps: 22,                    // Total reps completed
+  p_duration_sec: 180,           // Duration in seconds
+  p_occurred_at: new Date().toISOString(), // Timestamp
+  p_session_key: uuid(),         // Unique session identifier (prevents duplicates)
+  p_sets_data: [                 // Array of set results
+    { set: 1, reps: 22 }         // For max test, just one "set"
+  ]
+});
+
+// Returns array with single object:
+[{
+  prev_max: 18,              // Previous max (null if baseline/first test)
+  prev_date: "2025-01-15",   // Date of previous max test
+  new_max: 22,               // New max (max of prev_max and current reps)
+  delta: 4,                  // Improvement (new_max - prev_max)
+  is_baseline: false,        // true if this is the first max test ever
+  occurred_at: "2025-02-01", // Timestamp of this max test
+  next_workout_num: 2,       // Next workout number (always 2 after max test)
+  next_cycle_num: 3          // Cycle number after advancement
+}]
+
+// Vibe Coding Pattern:
+const handleMaxTestComplete = async (reps, durationSec, sessionKey) => {
+  const { data } = await supabase.rpc('record_max_test_and_progress', {
+    p_reps: reps,
+    p_duration_sec: durationSec,
+    p_occurred_at: new Date().toISOString(),
+    p_session_key: sessionKey,
+    p_sets_data: [{ set: 1, reps: reps }]
+  });
+
+  const result = data[0]; // Always use [0] - returns array
+
+  if (result.is_baseline) {
+    showMessage(`Baseline set: ${result.new_max} pull-ups! 🎉`);
+  } else {
+    showMessage(`New max: ${result.new_max} (+${result.delta} from last test)! 💪`);
+  }
+
+  // Navigate to dashboard to show updated progress
+  navigation.navigate('Dashboard');
 };
 ```
 

@@ -6,13 +6,18 @@
 
 ## What's Already Implemented ✅
 
-### Database RPCs (10+ Functions)
+### Database RPCs (12 Functions)
 - `complete_onboarding()` - Handles full onboarding flow
-- `complete_workout()` - Advances workout/cycle progression  
+- `complete_workout()` - Advances workout/cycle progression
 - `get_user_app_state()` - Returns complete navigation state
 - `get_user_onboarding_status()` - Checks onboarding needs
+- `get_dashboard_stats()` - Complete dashboard data with timezone-aware streak
+- `get_stats_data(p_tz)` - Complete stats page data (max test history, training consistency)
+- `record_max_test_and_progress()` - Records max test, updates max, advances progression
 - `save_workout_once()` - Idempotent workout saving
 - `handle_new_user()` - Auto-creates profiles via trigger
+- `set_workout_day_tg()` - Trigger for workout day timestamps
+- `ping()` - Health check function
 
 ### Edge Functions (Sophisticated Logic)
 1. **generate-workout v15** (Current - Fixed Sep 7, 2025)
