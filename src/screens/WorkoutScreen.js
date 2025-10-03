@@ -22,6 +22,7 @@ import { tokens } from '../theme/tokens'
 import { getQuoteWithAuthor, getQuote } from '../utils/quotes'
 import { supabase } from '../lib/supabase';
 import { bus } from '../lib/bus';
+import { scheduleRestCompleteNotification, cancelRestNotification } from '../utils/restNotifications';
 
 // Helper to get pattern label for display
 const getPatternLabel = (patternType, isMaxTest = false) => {
@@ -185,14 +186,17 @@ export default function WorkoutScreen({ navigation, route }) {
     setWorkoutDuration(elapsedSeconds);
   }, []);
 
-  // Start rest period with proper state initialization
-  const startRest = useCallback((seconds = REST_DURATION_SEC) => {
+  // Start rest period with proper state initialization + notification
+  const startRest = useCallback(async (seconds = REST_DURATION_SEC) => {
     const dl = Date.now() + seconds * 1000;
     setDeadline(dl);
     setRestTimeLeft(seconds);   // Show full duration immediately (not 0!)
     // Arm immediately for normal durations, delay only for very short rests
     setRestArmed(seconds > 2);  // Arm immediately if > 2 seconds
     setPageState('resting');    // Render rest UI
+
+    // Schedule notification for when rest completes (Phase 2 will add custom sound)
+    await scheduleRestCompleteNotification(seconds);
   }, []);
 
   // Initialize workout timer
@@ -245,19 +249,25 @@ export default function WorkoutScreen({ navigation, route }) {
   );
 
   // Handle rest completion (guards with restArmed)
-  const handleRestComplete = useCallback(() => {
+  const handleRestComplete = useCallback(async () => {
     if (!restArmed) return; // Prevent premature transitions
     setDeadline(null);
     setRestArmed(false);
     setPageState('active_set');
+
+    // Cancel notification when rest completes naturally
+    await cancelRestNotification();
   }, [restArmed]);
 
-  // Handle rest skip  
-  const handleSkipRest = useCallback(() => {
+  // Handle rest skip - cancel notification when user manually starts set early
+  const handleSkipRest = useCallback(async () => {
     if (pageState !== 'resting') return;
     setDeadline(null);
     setRestArmed(false);
     setPageState('active_set');
+
+    // Cancel notification since user started set early
+    await cancelRestNotification();
   }, [pageState]);
 
   // Removed buggy monitor effect - let NeonCountdown be single authority
@@ -271,16 +281,19 @@ export default function WorkoutScreen({ navigation, route }) {
     setCurrentQuote(quote);
   }, [pageState]);
 
-  const handleCompleteSet = () => {
+  const handleCompleteSet = async () => {
+    // Cancel any pending rest notification from previous set
+    await cancelRestNotification();
+
     // Add current reps to completed array
     setRepsCompleted(prev => [...prev, currentReps])
-    
+
     if (currentSet < totalSets) {
       setCurrentSet(currentSet + 1)
       setCurrentReps(targetRepsArr[currentSet]) // Set next set's target
-      
-      // Start rest period using proper function
-      startRest(REST_DURATION_SEC);
+
+      // Start rest period using proper function (includes notification)
+      await startRest(REST_DURATION_SEC);
     } else {
       setPageState('summary')
       setDeadline(null);

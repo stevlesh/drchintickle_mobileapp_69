@@ -26,7 +26,8 @@
             ]
           }
         ],
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSUserNotificationUsageDescription": "We use notifications to alert you when your rest is complete."
       }
     },
     "android": {
@@ -67,7 +68,11 @@
       "url": "https://u.expo.dev/c872a76c-b7c9-47cc-8b5e-b7a44933a57b"
     },
     "plugins": [
-      "expo-localization"
-    ]
+      "expo-localization",
+      "expo-notifications"
+    ],
+    "notification": {
+      "iosDisplayInForeground": true
+    }
   }
 }

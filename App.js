@@ -23,6 +23,8 @@ import { installAuthLinking } from './src/auth/supabaseAuth'
 import { navigationRef, resetTo, flushPendingNavigation } from './src/navigation/navigationRef'
 import { recoverFromStaleToken } from './src/utils/authRecovery'
 import { clearWorkoutPlanCache } from './src/utils/workoutApi'
+import { initNotifications } from './src/notificationsInit'
+import { requestNotificationPermissions } from './src/utils/restNotifications'
 
 // Import screens
 import LoadingScreen from './src/screens/LoadingScreen'
@@ -128,6 +130,15 @@ export default function App() {
     routeFromServerTruth();
     const { data: sub } = supabase.auth.onAuthStateChange((_evt,_s)=>{ routeFromServerTruth(); });
     return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // Initialize notifications once on app start
+  useEffect(() => {
+    (async () => {
+      await initNotifications();
+      // Ask once on app start
+      await requestNotificationPermissions().catch(() => {});
+    })();
   }, []);
 
   // Preload assets
