@@ -20,7 +20,15 @@ export const palette = {
   coral: '#ff6b35',
   orange: '#ff8c00',
   gold: '#ffd700',
-  
+
+  // Beach Sunset Collection - Girly Miami Vice
+  lipstickPink: '#FF4DA6',      // Hot pink with warmth
+  cottonCandyPink: '#FF77FF',   // Soft pastel pink
+  sunsetCoral: '#FFA94D',       // Peachy orange sunset
+  peachGlow: '#FFB6C1',         // Light pink neon glow
+  lemonSplash: '#FFF952',       // Bright yellow sparkle
+  icyBlue: '#9BFFFF',           // Light cyan sparkle
+
   // Neutrals
   white: '#ffffff',
   lightGray: '#d1d5db',
@@ -119,6 +127,12 @@ export const tokens = {
         text: palette.electricCyan,
         border: palette.electricCyan,
         glow: palette.electricCyan,
+      },
+      beachBall: {
+        gradient: [palette.lipstickPink, palette.cottonCandyPink, palette.sunsetCoral],
+        textGlow: palette.peachGlow,
+        borderGlow: palette.electricCyan,
+        sparkleColors: [palette.lemonSplash, palette.icyBlue, palette.cottonCandyPink],
       },
     },
   },

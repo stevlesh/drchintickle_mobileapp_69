@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import BackgroundContainer from '../components/BackgroundContainer';
 import NeonButton from '../components/NeonButton';
 import NeonBarButton from '../components/NeonBarButton';
+import AnimatedBeachBallButton from '../components/AnimatedBeachBallButton';
 import VStack from '../components/VStack';
 import { colors } from '../theme/typography';
 import { tokens } from '../theme/tokens';
@@ -219,16 +220,11 @@ const PreWorkoutScreen = ({ route, navigation }) => {
 
             {/* CTA Button */}
             <View style={styles.ctaButton}>
-              <NeonBarButton 
-                title="ACTIVATE SWOLE PATROL" 
+              <AnimatedBeachBallButton
+                label="ACTIVATE SWOLE PATROL"
                 onPress={handleStartSession}
-                fontFamily="IBMPlexMono_700Bold"
-                colors={{
-                  primary: tokens.brand.primary,       // #ff1493
-                  secondary: tokens.brand.secondary,   // #00ffff
-                  text: "#ffffff",
-                }}
-                disabled={false}
+                showGloss={false}
+                accessibilityLabel="Start your workout session"
               />
             </View>
           </VStack>

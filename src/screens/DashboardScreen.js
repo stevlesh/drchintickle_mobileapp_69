@@ -8,6 +8,7 @@ import NeonHeader from '../components/NeonHeader';
 import GlassCard from '../components/GlassCard';
 import NeonButton from '../components/NeonButton';
 import NeonBarButton from '../components/NeonBarButton';
+import AnimatedBeachBallButton from '../components/AnimatedBeachBallButton';
 import StatCard from '../components/StatCard';
 import NeonIcon from '../components/NeonIcon';
 import { colors, textStyles } from '../theme/typography';
@@ -194,17 +195,11 @@ const DashboardScreen = ({ navigation }) => {
 
         {/* CTA Button */}
         <View style={styles.ctaButton}>
-          <NeonBarButton 
-            title={needsMaxTest ? "MAX ME DADDY" : "GET SWOLE"} 
+          <AnimatedBeachBallButton
+            label={needsMaxTest ? "MAX ME DADDY" : "GET SWOLE"}
             onPress={handleWorkoutPress}
-            fontFamily="IBMPlexMono_700Bold"
-            colors={{
-              primary: tokens.brand.primary,       // #ff1493
-              secondary: tokens.brand.secondary,   // #00ffff
-              card: tokens.background.card,        // #4a1b69
-              text: "#ffffff",
-            }}
-            disabled={false}
+            showGloss={false}
+            accessibilityLabel={needsMaxTest ? "Start max test workout" : "Start workout session"}
           />
         </View>
 
