@@ -25,6 +25,12 @@ export const palette = {
   lipstickPink: '#FF4DA6',      // Hot pink with warmth
   cottonCandyPink: '#FF77FF',   // Soft pastel pink
   sunsetCoral: '#FFA94D',       // Peachy orange sunset
+
+  // Desaturated "Neon Night" variants (10% less saturation for nighttime vibe)
+  lipstickPinkNight: '#FF4D9E',      // Slightly cooler, less orange
+  cottonCandyPinkNight: '#FF70F5',   // Less pure pink, more magenta
+  sunsetCoralNight: '#FF9F4D',       // Less peachy, more amber
+
   peachGlow: '#FFB6C1',         // Light pink neon glow
   lemonSplash: '#FFF952',       // Bright yellow sparkle
   icyBlue: '#9BFFFF',           // Light cyan sparkle
@@ -129,9 +135,19 @@ export const tokens = {
         glow: palette.electricCyan,
       },
       beachBall: {
-        gradient: [palette.lipstickPink, palette.cottonCandyPink, palette.sunsetCoral],
+        // Option A: Original sunset colors (warm daylight)
+        gradientA: [palette.lipstickPink, palette.cottonCandyPink, palette.sunsetCoral],
+
+        // Option B: Desaturated "night" colors (cooler nighttime)
+        gradientB: [palette.lipstickPinkNight, palette.cottonCandyPinkNight, palette.sunsetCoralNight],
+
+        // Active gradient (swap between A/B for A/B testing)
+        gradient: [palette.lipstickPink, palette.cottonCandyPink, palette.sunsetCoral], // using gradientA
+
         textGlow: palette.peachGlow,
-        borderGlow: palette.electricCyan,
+        iconColor: palette.electricCyan,      // Beach ball icon color
+        borderColor: palette.electricCyan,    // Cyan border for neon containment
+        borderGlow: palette.electricCyan,     // Cyan outer glow
         sparkleColors: [palette.lemonSplash, palette.icyBlue, palette.cottonCandyPink],
       },
     },

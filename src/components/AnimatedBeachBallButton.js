@@ -107,10 +107,10 @@ const AnimatedBeachBallButton = ({
       useNativeDriver: true,
     });
 
-    // If reduced motion is enabled, skip animation
-    if (reduceMotion) {
+    // If reduced motion is enabled OR button is disabled, skip animation
+    if (reduceMotion || disabled) {
       animating.current = false;
-      if (onPress) onPress();
+      if (onPress && !disabled) onPress();
       return;
     }
 
@@ -163,12 +163,26 @@ const AnimatedBeachBallButton = ({
       accessibilityLabel={accessibilityLabel || `${label} button`}
       accessibilityRole="button"
     >
-      <LinearGradient
-        colors={buttonColors.gradient}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={styles.gradientBackground}
-      >
+      <View style={styles.neonWrap}>
+        {/* Android glow layer (iOS uses shadow on neonWrap) */}
+        <View
+          style={[
+            styles.neonHalo,
+            disabled && styles.disabledHalo
+          ]}
+          pointerEvents="none"
+        />
+
+        <LinearGradient
+          colors={buttonColors.gradient}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={[
+            styles.gradientBackground,
+            styles.cyanBorder,
+            disabled && styles.disabledBorder
+          ]}
+        >
         {/* Optional gloss overlay */}
         {showGloss && (
           <LinearGradient
@@ -194,7 +208,7 @@ const AnimatedBeachBallButton = ({
               setIconSize({ width, height });
             }}
           >
-            <BeachBall size={28} color={buttonColors.borderGlow} weight="fill" />
+            <BeachBall size={28} color={buttonColors.iconColor} weight="fill" />
           </Animated.View>
 
           {/* Sparkle elements (absolute within iconContainer) */}
@@ -245,6 +259,7 @@ const AnimatedBeachBallButton = ({
           })}
         </View>
       </LinearGradient>
+      </View>
     </Pressable>
   );
 };
@@ -261,6 +276,39 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.5,
   },
+  // Wrapper for neon effect (iOS glow via shadow, Android via halo layer)
+  neonWrap: {
+    borderRadius: RADIUS,
+    overflow: 'visible',
+    // iOS glow
+    shadowColor: tokens.border.primary,  // #00F6FF
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 12,  // Android elevation
+  },
+  // Android glow layer (halo behind gradient for cross-platform consistency)
+  neonHalo: {
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    right: -4,
+    bottom: -4,
+    borderRadius: RADIUS + 4,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 246, 255, 0.6)',
+    backgroundColor: 'rgba(0, 246, 255, 0.06)', // Subtle cyan fill for Android
+    shadowColor: '#00F6FF',
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  // Disabled halo (toned down for non-clickable appearance)
+  disabledHalo: {
+    borderColor: 'rgba(0, 246, 255, 0.15)',
+    backgroundColor: 'rgba(0, 246, 255, 0.02)',
+    shadowOpacity: 0.2,
+  },
   gradientBackground: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -269,6 +317,15 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 24,
     position: 'relative',
+  },
+  // Cyan border for neon containment (softened alpha to avoid sticker look)
+  cyanBorder: {
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 246, 255, 0.25)',  // Subtle edge
+  },
+  // Disabled border (even lighter)
+  disabledBorder: {
+    borderColor: 'rgba(0, 246, 255, 0.1)',
   },
   glossOverlay: {
     position: 'absolute',
@@ -287,7 +344,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textShadowColor: tokens.component.button.beachBall.textGlow,
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
+    textShadowRadius: 6,  // Capped to prevent bloom on light gradient
   },
   iconContainer: {
     position: 'relative',
