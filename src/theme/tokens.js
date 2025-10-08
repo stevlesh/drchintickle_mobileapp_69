@@ -151,8 +151,23 @@ export const tokens = {
         sparkleColors: [palette.lemonSplash, palette.icyBlue, palette.cottonCandyPink],
       },
     },
+
+    // Palm tree progress indicator
+    palm: {
+      completed: {
+        fill: palette.electricCyan,             // Keep cyan for completed
+        halo: 'rgba(0, 246, 255, 0.45)',        // Cyan halo
+      },
+      current: {
+        fill: palette.cottonCandyPink,          // Softer pink (harmonizes with button)
+        halo: 'rgba(0, 246, 255, 0.35)',        // Cyan halo for harmony
+      },
+      future: {
+        stroke: 'rgba(255, 182, 193, 0.60)',    // Peach-pink outline (dim unlit tube)
+      },
+    },
   },
-  
+
   // Shadow system
   shadow: {
     small: '0 2px 8px rgba(0, 0, 0, 0.3)',

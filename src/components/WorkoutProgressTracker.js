@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { TreePalm } from 'phosphor-react-native';
 import { colors } from '../theme/typography';
+import { tokens } from '../theme/tokens';
 
 const WorkoutProgressTracker = ({ currentWorkoutNum = 1, workoutType = 'MAX TEST', totalWorkouts = 8 }) => {
   // Handle edge cases
@@ -19,27 +20,30 @@ const WorkoutProgressTracker = ({ currentWorkoutNum = 1, workoutType = 'MAX TEST
 
   const getPalmTreeProps = (treeIndex) => {
     const workoutPosition = treeIndex + 1; // Convert 0-based index to 1-based workout number
-    
+
     if (workoutPosition < safeCurrentWorkout) {
       // Completed workouts - bright cyan
       return {
-        color: colors.electricCyan,
+        color: tokens.component.palm.completed.fill,
         weight: 'fill',
-        style: styles.completedPalm
+        halo: tokens.component.palm.completed.halo,
+        state: 'completed'
       };
     } else if (workoutPosition === safeCurrentWorkout) {
-      // Current workout - hot pink
+      // Current workout - cotton candy pink (harmonizes with button)
       return {
-        color: colors.hotPink,
-        weight: 'fill', 
-        style: styles.currentPalm
+        color: tokens.component.palm.current.fill,
+        weight: 'fill',
+        halo: tokens.component.palm.current.halo,
+        state: 'current'
       };
     } else {
-      // Upcoming workouts - hot pink outline for better visibility
+      // Upcoming workouts - peach-pink outline (dim unlit tube)
       return {
-        color: colors.hotPink,
+        color: tokens.component.palm.future.stroke,
         weight: 'regular',
-        style: styles.upcomingPalm
+        halo: null,
+        state: 'future'
       };
     }
   };
@@ -52,14 +56,34 @@ const WorkoutProgressTracker = ({ currentWorkoutNum = 1, workoutType = 'MAX TEST
       <View style={styles.palmTreeRow}>
         {Array.from({ length: totalWorkouts }, (_, index) => {
           const palmProps = getPalmTreeProps(index);
+          const size = 30;
+
           return (
-            <TreePalm
-              key={index}
-              size={30}
-              color={palmProps.color}
-              weight={palmProps.weight}
-              style={[styles.palmTree, palmProps.style]}
-            />
+            <View key={index} style={styles.palmWrapper}>
+              {/* Halo layer for cross-platform glow (iOS shadow + Android border) */}
+              {palmProps.halo && (
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.palmHalo,
+                    {
+                      width: size + 8,
+                      height: size + 8,
+                      borderRadius: size,
+                      shadowColor: palmProps.halo,
+                      borderColor: palmProps.halo,
+                    }
+                  ]}
+                />
+              )}
+
+              {/* Palm icon */}
+              <TreePalm
+                size={size}
+                color={palmProps.color}
+                weight={palmProps.weight}
+              />
+            </View>
           );
         })}
       </View>
@@ -92,23 +116,24 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 24,        // narrower than cards to align with text edges
   },
-  palmTree: {
-    // Base palm tree styling
+  palmWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 30,
+    height: 30,
   },
-  completedPalm: {
-    // Subtle glow for completed workouts
-    textShadowColor: colors.electricCyan,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
-  },
-  currentPalm: {
-    // More prominent glow for current workout
-    textShadowColor: colors.hotPink,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 6,
-  },
-  upcomingPalm: {
-    opacity: 0.7, // More visible than before but still "upcoming"
+  palmHalo: {
+    position: 'absolute',
+    left: -4,
+    top: -4,
+    // iOS: Use shadow for soft glow
+    shadowOpacity: 0.45,   // Softer glow (less "ringy")
+    shadowRadius: 5,       // Tighter spread for natural falloff
+    shadowOffset: { width: 0, height: 0 },
+    // Android: Use border for fake glow (shadows don't render on Android)
+    backgroundColor: 'transparent',
+    borderWidth: Platform.OS === 'android' ? 2 : 0,  // Only show border on Android
   },
   workoutInfo: {
     fontFamily: 'IBMPlexMono_400Regular',
