@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ScrollView, View, Text, StyleSheet, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import BackgroundContainer from '../components/BackgroundContainer';
 import NeonHeader from '../components/NeonHeader';
@@ -9,7 +10,7 @@ import StatCard from '../components/StatCard';
 import StatsStatCard from '../components/StatsStatCard';
 import MaxTestChart from '../components/MaxTestChart';
 import { colors } from '../theme/typography';
-import { tokens } from '../theme/tokens';
+import { tokens, palette } from '../theme/tokens';
 import { supabase } from '../lib/supabase';
 import { getTimezone } from '../utils/timezone';
 
@@ -96,10 +97,10 @@ const StatsScreen = ({ navigation }) => {
         <GainsTitleBand useGradient={true} topGap={6} />
 
         {/* Hero Chart */}
-        <GlassCard style={styles.chartCard}>
+        <View style={styles.chartCard}>
           <Text style={styles.chartTitle}>Max Set Progress</Text>
           <MaxTestChart maxTestHistory={maxTestHistory} />
-        </GlassCard>
+        </View>
 
         {/* Stats Cards Row 1: Completed Cycles + Remaining Sessions */}
         <View style={styles.statsRow}>
@@ -169,17 +170,26 @@ const styles = StyleSheet.create({
   },
   chartCard: {
     marginBottom: 20,
-    padding: 12,
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: tokens.component.glassPanel.background,
+    borderWidth: 1.5,
+    borderColor: tokens.component.glassPanel.border,
+    shadowColor: tokens.component.glassPanel.glow.color,
+    shadowOpacity: tokens.component.glassPanel.glow.opacity,
+    shadowRadius: tokens.component.glassPanel.glow.radius,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
   },
   chartTitle: {
     fontFamily: 'IBMPlexMono_700Bold',
     fontSize: 18,
-    color: colors.white,
+    color: palette.warmWhite,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    textShadowColor: colors.hotPink,
+    textShadowColor: colors.electricCyan,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
   },
@@ -233,7 +243,7 @@ const styles = StyleSheet.create({
   consistencyTitle: {
     fontFamily: 'IBMPlexMono_600SemiBold',
     fontSize: 16,
-    color: colors.white,
+    color: palette.warmWhite,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 2,
@@ -241,7 +251,8 @@ const styles = StyleSheet.create({
   consistencySubtext: {
     fontFamily: 'IBMPlexMono_400Regular',
     fontSize: 11,
-    color: colors.white,
+    color: palette.warmWhite,
+    opacity: 0.7,
     textTransform: 'lowercase',
   },
 });

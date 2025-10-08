@@ -857,6 +857,7 @@ export default function WorkoutScreen({ navigation, route }) {
             <SetBreakdownCompactGrid
               data={repsCompleted.map((v, i) => ({ k: `S${i + 1}`, v: String(v ?? 0) }))}
               showTotal={false}
+              headerText="SETS COMPLETED"
             />
           </LinearGradient>
         </View>

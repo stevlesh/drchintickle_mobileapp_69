@@ -4,22 +4,29 @@ import { colors } from '../theme/typography';
 import { tokens } from '../theme/tokens';
 import { Cigarette } from 'phosphor-react-native';
 
-export default function SetBreakdownCompactGrid({ data, showTotal = true }) {
+export default function SetBreakdownCompactGrid({
+  data,
+  showTotal = true,
+  suppressContainer = false,
+  headerText = "SET BREAKDOWN"
+}) {
   const total = data.reduce((sum, x) => sum + Number(x.v || 0), 0);
 
-  return (
-    <View style={styles.card} accessibilityRole="summary">
-      {/* Header */}
-      <View style={styles.header} accessible accessibilityLabel="Set breakdown">
-        <Cigarette
-          size={28}
-          color={colors.electricCyan}
-          style={{ marginRight: 12 }}
-          accessibilityElementsHidden
-          importantForAccessibility="no"
-        />
-        <Text style={styles.headerText}>SETS COMPLETED</Text>
-      </View>
+  const content = (
+    <>
+      {/* Header (only show if not suppressed) */}
+      {!suppressContainer && (
+        <View style={styles.header} accessible accessibilityLabel="Set breakdown">
+          <Cigarette
+            size={28}
+            color={colors.electricCyan}
+            style={{ marginRight: 12 }}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+          <Text style={styles.headerText}>{headerText}</Text>
+        </View>
+      )}
 
       {/* 4 × 2 scoreboard grid */}
       <View style={styles.grid}>
@@ -52,6 +59,18 @@ export default function SetBreakdownCompactGrid({ data, showTotal = true }) {
           <Text style={styles.totalValue}>{total}</Text>
         </View>
       )}
+    </>
+  );
+
+  // If suppressContainer, return just the content
+  if (suppressContainer) {
+    return content;
+  }
+
+  // Otherwise, return with original container
+  return (
+    <View style={styles.card} accessibilityRole="summary">
+      {content}
     </View>
   );
 }

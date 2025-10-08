@@ -150,7 +150,6 @@ const DashboardScreen = ({ navigation }) => {
 
   return (
     <BackgroundContainer>
-
       <ScrollView contentContainerStyle={styles.container}>
         {/* Header */}
         <NeonHeader 

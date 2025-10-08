@@ -35,6 +35,10 @@ export const palette = {
   lemonSplash: '#FFF952',       // Bright yellow sparkle
   icyBlue: '#9BFFFF',           // Light cyan sparkle
 
+  // Neon Night Beach additions
+  deepNight: '#1A1033',         // Glass card base background
+  warmWhite: '#FFEAFB',         // Supporting text with warmth
+
   // Neutrals
   white: '#ffffff',
   lightGray: '#d1d5db',
@@ -91,6 +95,8 @@ export const tokens = {
   gradient: {
     statPink: ['#8b005c', '#3e0066'],
     statCyan: ['#0066cc', '#003366'],
+    nightBeach: ['#FF4DA6', '#A83B9E', '#1A1033'],  // Main background gradient (Home vibe)
+    trainingConsistency: ['#FFA94D', '#FF77FF'],    // Coral → Pink (optional)
   },
 
   // Component-specific tokens
@@ -164,6 +170,17 @@ export const tokens = {
       },
       future: {
         stroke: 'rgba(255, 182, 193, 0.60)',    // Peach-pink outline (dim unlit tube)
+      },
+    },
+
+    // Glass panel system for PreWorkout/Stats screens
+    glassPanel: {
+      background: 'rgba(26, 16, 51, 0.68)',     // Deep night with 68% opacity
+      border: 'rgba(0, 246, 255, 0.30)',        // Cyan border at 30%
+      glow: {
+        color: '#00F6FF',                       // Cyan glow
+        opacity: 0.40,
+        radius: 10,
       },
     },
   },

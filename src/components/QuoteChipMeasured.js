@@ -15,6 +15,7 @@ export default function QuoteChipMeasured({
   quoteSize,
   paddingH,
   paddingV,
+  suppressContainer = false,
 }) {
   const tiny = Dimensions.get('window').width < 360;
 
@@ -60,11 +61,10 @@ export default function QuoteChipMeasured({
     };
   }, [last, PAD_H, PAD_V, GAP]);
 
-  return (
-    <View style={styles.wrap} accessible accessibilityLabel={`Quote: ${text}`}>
-      {/* Dark pill background, NO border, NO outer cyan glow */}
-      <View style={[styles.frame, { paddingHorizontal: PAD_H, paddingVertical: PAD_V }]}>
-        {/* inner vignette only (helps the quotes pop) */}
+  const content = (
+    <>
+      {/* inner vignette only (helps the quotes pop) - only if not suppressed */}
+      {!suppressContainer && (
         <LinearGradient
           colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.10)']}
           start={{ x: 0.5, y: 0 }}
@@ -72,33 +72,52 @@ export default function QuoteChipMeasured({
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
+      )}
 
-        {/* Measured text; wrapping defines line boxes */}
-        <Text style={styles.body} onTextLayout={onTextLayout}>
-          {text}
+      {/* Measured text; wrapping defines line boxes */}
+      <Text style={styles.body} onTextLayout={onTextLayout}>
+        {text}
+      </Text>
+
+      {/* Opening big quote — equalized distance before first glyph */}
+      {openPos && (
+        <Text
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+          style={[styles.q, { fontSize: QSIZE, top: openPos.top, left: openPos.left }]}
+        >
+          "
         </Text>
+      )}
 
-        {/* Opening big quote — equalized distance before first glyph */}
-        {openPos && (
-          <Text
-            accessibilityElementsHidden
-            importantForAccessibility="no"
-            style={[styles.q, { fontSize: QSIZE, top: openPos.top, left: openPos.left }]}
-          >
-            "
-          </Text>
-        )}
+      {/* Closing big quote — equalized distance after last glyph */}
+      {closePos && (
+        <Text
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+          style={[styles.q, { fontSize: QSIZE, top: closePos.top, left: closePos.left }]}
+        >
+          "
+        </Text>
+      )}
+    </>
+  );
 
-        {/* Closing big quote — equalized distance after last glyph */}
-        {closePos && (
-          <Text
-            accessibilityElementsHidden
-            importantForAccessibility="no"
-            style={[styles.q, { fontSize: QSIZE, top: closePos.top, left: closePos.left }]}
-          >
-            "
-          </Text>
-        )}
+  // If suppressContainer, return just the content with positioning wrapper
+  if (suppressContainer) {
+    return (
+      <View style={{ position: 'relative', paddingHorizontal: PAD_H, paddingVertical: PAD_V }}>
+        {content}
+      </View>
+    );
+  }
+
+  // Otherwise, return with original container
+  return (
+    <View style={styles.wrap} accessible accessibilityLabel={`Quote: ${text}`}>
+      {/* Dark pill background, NO border, NO outer cyan glow */}
+      <View style={[styles.frame, { paddingHorizontal: PAD_H, paddingVertical: PAD_V }]}>
+        {content}
       </View>
     </View>
   );

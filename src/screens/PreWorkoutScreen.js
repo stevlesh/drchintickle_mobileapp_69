@@ -10,7 +10,7 @@ import NeonBarButton from '../components/NeonBarButton';
 import AnimatedBeachBallButton from '../components/AnimatedBeachBallButton';
 import VStack from '../components/VStack';
 import { colors } from '../theme/typography';
-import { tokens } from '../theme/tokens';
+import { tokens, palette } from '../theme/tokens';
 import { getQuote } from '../utils/quotes';
 import { supabase } from '../lib/supabase';
 import { generateWorkout } from '../utils/workoutApi';
@@ -34,8 +34,7 @@ const PreWorkoutScreen = ({ route, navigation }) => {
   });
   
   const quote = getQuote('preWorkout');
-  const nextSetIndex = 0;
-  
+
   // Refs for robust caching and race condition prevention
   const inflightRef = useRef(false);
   const lastFetchRef = useRef(0);
@@ -185,38 +184,46 @@ const PreWorkoutScreen = ({ route, navigation }) => {
 
             {/* Set Breakdown Card */}
             {workoutData.isMaxTestDay ? (
-              <View style={[styles.neonCardShadow, { shadowColor: tokens.border.primary }]}>
-                <LinearGradient
-                  colors={tokens.component.neonCard.background}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.setBreakdownCard}
-                >
-                  <View style={styles.maxTestHeader}>
-                    <Cigarette
-                      size={28}
-                      color={colors.electricCyan}
-                      style={{ marginRight: 12 }}
-                    />
-                    <Text style={styles.maxTestHeaderText}>MAX TEST INSTRUCTIONS</Text>
-                  </View>
-                  <Text style={styles.maxTestInstructions}>
-                    One set. All out. No half-reps. This isn't Planet Fitness. Your max sets the baseline for the next 7 workouts.
-                  </Text>
-                </LinearGradient>
+              <View style={styles.glassCard}>
+                <View style={styles.maxTestHeader}>
+                  <Cigarette
+                    size={28}
+                    color={colors.electricCyan}
+                    style={{ marginRight: 12 }}
+                  />
+                  <Text style={styles.maxTestHeaderText}>MAX TEST INSTRUCTIONS</Text>
+                </View>
+                <Text style={styles.maxTestInstructions}>
+                  One set. All out. No half-reps. This isn't Planet Fitness. Your max sets the baseline for the next 7 workouts.
+                </Text>
               </View>
             ) : (
-              <SetBreakdownCompactGrid
-                data={workoutData.setBreakdown?.map((reps, idx) => ({
-                  k: `S${idx + 1}`,
-                  v: reps.toString(),
-                  next: idx === nextSetIndex,
-                })) || []}
-              />
+              <View style={styles.glassCard}>
+                <View style={styles.setBreakdownHeaderContainer}>
+                  <Cigarette
+                    size={28}
+                    color={colors.electricCyan}
+                    style={{ marginRight: 12 }}
+                  />
+                  <Text style={styles.setBreakdownHeader}>SET BREAKDOWN</Text>
+                </View>
+                <SetBreakdownCompactGrid
+                  data={workoutData.setBreakdown?.map((reps, idx) => ({
+                    k: `S${idx + 1}`,
+                    v: reps.toString(),
+                  })) || []}
+                  suppressContainer={true}
+                />
+              </View>
             )}
 
             {/* Quote */}
-            <QuoteChipMeasured text={quote || 'Pain is weakness leaving the body!'} />
+            <View style={styles.glassCard}>
+              <QuoteChipMeasured
+                text={quote || 'Pain is weakness leaving the body!'}
+                suppressContainer={true}
+              />
+            </View>
 
             {/* CTA Button */}
             <View style={styles.ctaButton}>
@@ -245,19 +252,18 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     overflow: "visible", // CRITICAL: don't clip the neon ring shadow
   },
-  // Neon Card
-  neonCardShadow: {
-    borderRadius: 16,
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
+  // Glass Panel Card
+  glassCard: {
+    borderRadius: 18,
+    backgroundColor: tokens.component.glassPanel.background,
+    borderWidth: 1.5,
+    borderColor: tokens.component.glassPanel.border,
+    padding: 16,
+    shadowColor: tokens.component.glassPanel.glow.color,
+    shadowOpacity: tokens.component.glassPanel.glow.opacity,
+    shadowRadius: tokens.component.glassPanel.glow.radius,
     shadowOffset: { width: 0, height: 0 },
     elevation: 8,
-  },
-  setBreakdownCard: {
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: tokens.border.primary,
-    padding: 16,
   },
   maxTestHeader: {
     flexDirection: 'row',
@@ -268,14 +274,28 @@ const styles = StyleSheet.create({
   maxTestHeaderText: {
     fontFamily: 'IBMPlexMono_400Regular',
     fontSize: 12,
-    color: colors.white,
+    color: palette.warmWhite,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  setBreakdownHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  setBreakdownHeader: {
+    fontFamily: 'IBMPlexMono_400Regular',
+    fontSize: 12,
+    color: palette.warmWhite,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
   maxTestInstructions: {
     fontFamily: 'IBMPlexMono_400Regular',
     fontSize: 14,
-    color: colors.white,
+    color: palette.warmWhite,
+    opacity: 0.9,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -289,7 +309,7 @@ const styles = StyleSheet.create({
   totalLbl: {
     fontFamily: 'IBMPlexMono_700Bold',
     fontSize: 12,
-    color: '#FFF',
+    color: palette.warmWhite,
     marginRight: 8,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
