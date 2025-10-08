@@ -208,7 +208,7 @@ const AnimatedBeachBallButton = ({
               setIconSize({ width, height });
             }}
           >
-            <BeachBall size={28} color={buttonColors.iconColor} weight="fill" />
+            <BeachBall size={28} color={buttonColors.iconColor} weight="regular" />
           </Animated.View>
 
           {/* Sparkle elements (absolute within iconContainer) */}
