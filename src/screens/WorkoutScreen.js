@@ -438,7 +438,7 @@ export default function WorkoutScreen({ navigation, route }) {
       // ✅ FIX 3: Functional update ensures sync (no off-by-one)
       setCurrentSet(prev => {
         const next = prev + 1;
-        setCurrentReps(targetRepsArr[next]);
+        setCurrentReps(targetRepsArr[next - 1]); // ✅ FIX: Convert 1-indexed set to 0-indexed array
         return next;
       });
       await startRest(REST_DURATION_SEC);
