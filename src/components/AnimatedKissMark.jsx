@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, View } from "react-native";
 import KissMark from "./KissMark";
+import { CELEBRATION } from "../utils/celebrationConstants";
 
 export default function AnimatedKissMark({
   visible = false,
@@ -10,10 +11,10 @@ export default function AnimatedKissMark({
   glow = true,
   glowOpacity = 0.3,
 }) {
-  // Animation values - useMemo ensures single initialization without render-phase side effects
-  const scale = useMemo(() => new Animated.Value(0), []);
-  const opacity = useMemo(() => new Animated.Value(0), []);
-  const rotation = useMemo(() => new Animated.Value(0), []);
+  // Animation values - useRef for StrictMode stability (avoids remount issues)
+  const scale = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const rotation = useRef(new Animated.Value(0)).current;
 
   // Latest-ref pattern: Keep callback stable, always call the latest version
   const onCompleteRef = useRef(onComplete);
@@ -52,7 +53,7 @@ export default function AnimatedKissMark({
     rotation.setValue(0);
 
     const sequence = Animated.sequence([
-      // Pop in with bounce (300ms)
+      // Pop in with bounce (uses CELEBRATION.kissPopInMs)
       Animated.parallel([
         Animated.spring(scale, {
           toValue: 1,
@@ -62,31 +63,31 @@ export default function AnimatedKissMark({
         }),
         Animated.timing(opacity, {
           toValue: 1,
-          duration: 200,
+          duration: CELEBRATION.kissPopInMs,
           useNativeDriver: true,
         }),
         Animated.timing(rotation, {
           toValue: 1,
-          duration: 300,
+          duration: CELEBRATION.kissPopInMs,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]),
 
-      // Hold (400ms)
-      Animated.delay(400),
+      // Hold (uses CELEBRATION.kissHoldMs)
+      Animated.delay(CELEBRATION.kissHoldMs),
 
-      // Fade out with slight scale up (280ms)
+      // Fade out with slight scale up (uses CELEBRATION.kissFadeOutMs)
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 0,
-          duration: 280,
+          duration: CELEBRATION.kissFadeOutMs,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(scale, {
           toValue: 1.12,
-          duration: 280,
+          duration: CELEBRATION.kissFadeOutMs,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
@@ -94,9 +95,9 @@ export default function AnimatedKissMark({
     ]);
 
     sequence.start(({ finished }) => {
-      // Only call onComplete if animation wasn't interrupted
-      // Use ref to always call the latest callback without causing re-runs
-      if (finished) onCompleteRef.current?.();
+      console.log('[KissMark] ✅ Animation complete (finished:', finished, ')');
+      // Call onComplete with { finished } object to match contract
+      onCompleteRef.current?.({ finished });
     });
 
     // Cleanup on unmount or when visible changes

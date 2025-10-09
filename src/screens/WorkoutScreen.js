@@ -24,6 +24,10 @@ import { getQuoteWithAuthor, getQuote } from '../utils/quotes'
 import { supabase } from '../lib/supabase';
 import { bus } from '../lib/bus';
 import { scheduleRestCompleteNotification, cancelRestNotification } from '../utils/restNotifications';
+import AnimatedBeachBallButtonV2 from '../components/AnimatedBeachBallButtonV2';
+import { CELEBRATION } from '../utils/celebrationConstants';
+import * as Haptics from 'expo-haptics';
+import { AccessibilityInfo } from 'react-native';
 
 // Helper to get pattern label for display
 const getPatternLabel = (patternType, isMaxTest = false) => {
@@ -119,7 +123,17 @@ export default function WorkoutScreen({ navigation, route }) {
 
   // Kiss mark animation state
   const [showKissMark, setShowKissMark] = useState(false);
-  
+
+  // Celebration orchestration state (production-grade dual animation control)
+  const [isCelebrating, setIsCelebrating] = useState(false);
+  const celebratingRef = useRef(false);  // Sync guard for race-proof lock
+  const buttonRef = useRef(null);        // Imperative button control
+  const done = useRef({ button: false, kiss: false });  // Barrier completion flags
+  const progressedRef = useRef(false);   // Single-flight guard - prevents double-call of handleCompleteSetLogic
+
+  // Reduced motion state (accessibility)
+  const [reduceMotion, setReduceMotion] = useState(false);
+
   // Animation for rep number pulse and flicker
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const flickerAnim = useRef(new Animated.Value(1)).current;
@@ -154,10 +168,21 @@ export default function WorkoutScreen({ navigation, route }) {
     };
     flicker();
   }, []);
-  
-  // Get reduce motion preference
-  const reduceMotion = useReduceMotion();
-  
+
+  // Subscribe to reduced motion changes (accessibility)
+  useEffect(() => {
+    // Initial check
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+
+    // Subscribe to runtime changes
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      setReduceMotion
+    );
+
+    return () => subscription?.remove();
+  }, []);
+
   // References for timers
   const workoutTimerRef = useRef(null);
   const workoutStartTimeRef = useRef(Date.now());
@@ -285,28 +310,203 @@ export default function WorkoutScreen({ navigation, route }) {
     setCurrentQuote(quote);
   }, [pageState]);
 
-  const handleCompleteSet = async () => {
+  // ============================================================================
+  // CELEBRATION ORCHESTRATION (Production-Grade Animation Control)
+  // ============================================================================
+
+  // Start celebration with race-proof lock
+  const startCelebration = () => {
+    if (celebratingRef.current) return;  // Sync guard prevents double-tap
+
+    celebratingRef.current = true;
+    setIsCelebrating(true);
+    done.current = { button: false, kiss: false };
+
+    // Single haptic (gated by reduced motion)
+    if (!reduceMotion) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }
+
+    // If reduced motion, skip animations and unlock immediately
+    if (reduceMotion) {
+      onButtonComplete({ finished: true });
+      onKissComplete({ finished: true });
+      return;
+    }
+
+    // Trigger both animations simultaneously
+    setShowKissMark(true);
+    // Button animation plays via autoPlayOnPress
+  };
+
+  // End celebration and unlock
+  const endCelebration = (force = false) => {
+    celebratingRef.current = false;
+    setIsCelebrating(false);
+    setShowKissMark(false);
+
+    // Only reset barrier flags if NOT a failsafe force-unlock
+    if (!force) {
+      done.current = { button: false, kiss: false };
+      progressedRef.current = false;
+    }
+  };
+
+  // Barrier completion - unlock when BOTH animations finish
+  const maybeUnlock = () => {
+    if (done.current.button && done.current.kiss) {
+      // Single-flight guard - prevent double-call
+      if (progressedRef.current) {
+        console.log('[WorkoutScreen] ⏭️  Already progressed - skipping');
+        return;
+      }
+      progressedRef.current = true;
+
+      console.log('[WorkoutScreen] 🎉 Both animations complete - unlocking and progressing');
+      endCelebration();
+
+      // NOW trigger set completion logic AFTER both animations finish
+      handleCompleteSetLogic().catch(err => {
+        console.error('[WorkoutScreen] Set completion error:', err);
+      });
+    }
+  };
+
+  // Button animation complete callback
+  const onButtonComplete = ({ finished }) => {
+    // Early return if already progressed or celebration ended
+    if (!celebratingRef.current || progressedRef.current) {
+      console.log('[WorkoutScreen] ⏭️  Button callback late - already progressed');
+      return;
+    }
+
+    // If interrupted, end immediately (don't wait for barrier)
+    if (!finished) {
+      console.warn('[WorkoutScreen] Button animation interrupted');
+      endCelebration();
+      return;
+    }
+
+    // Normal path: mark done and check barrier
+    console.log('[WorkoutScreen] ✅ Button animation complete');
+    done.current.button = true;
+    maybeUnlock();
+  };
+
+  // Kiss animation complete callback
+  const onKissComplete = ({ finished }) => {
+    setShowKissMark(false);  // Hide overlay first
+
+    // Early return if already progressed or celebration ended
+    if (!celebratingRef.current || progressedRef.current) {
+      console.log('[WorkoutScreen] ⏭️  Kiss callback late - already progressed');
+      return;
+    }
+
+    // If interrupted, end immediately
+    if (!finished) {
+      console.warn('[WorkoutScreen] Kiss animation interrupted');
+      endCelebration();
+      return;
+    }
+
+    // Normal path: mark done and check barrier
+    console.log('[WorkoutScreen] ✅ Kiss animation complete');
+    done.current.kiss = true;
+    maybeUnlock();
+  };
+
+  // CTA press handler - locks BEFORE async operations
+  const onCtaPress = () => {
+    console.log('[WorkoutScreen] 🎯 SMOKED HER pressed - starting celebration');
+    // Lock IMMEDIATELY (sync ref blocks double-tap)
+    startCelebration();
+
+    // DON'T call handleCompleteSetLogic here anymore - wait for barrier
+    // It will be called in maybeUnlock() after both animations complete
+  };
+
+  // Extracted set completion logic (async operations)
+  const handleCompleteSetLogic = async () => {
     // Cancel any pending rest notification from previous set
     await cancelRestNotification();
 
-    // 🎯 TRIGGER KISS MARK ANIMATION
-    setShowKissMark(true);
-
     // Add current reps to completed array
-    setRepsCompleted(prev => [...prev, currentReps])
+    setRepsCompleted(prev => [...prev, currentReps]);
 
     if (currentSet < totalSets) {
-      setCurrentSet(currentSet + 1)
-      setCurrentReps(targetRepsArr[currentSet]) // Set next set's target
-
-      // Start rest period using proper function (includes notification)
+      // ✅ FIX 3: Functional update ensures sync (no off-by-one)
+      setCurrentSet(prev => {
+        const next = prev + 1;
+        setCurrentReps(targetRepsArr[next]);
+        return next;
+      });
       await startRest(REST_DURATION_SEC);
     } else {
-      setPageState('summary')
+      setPageState('summary');
       setDeadline(null);
       setRestArmed(false);
     }
-  }
+  };
+
+  // ✅ FIX 2: Derive failsafe locally (drift-proof, not fixed 2000ms)
+  // Increased buffer to +800ms for spring animation settling time
+  const failsafeMs = Math.max(CELEBRATION.sparkleTotalMs, CELEBRATION.kissTotalMs) + 800;
+
+  // Failsafe: force unlock after derived timeout if callbacks never fire
+  useEffect(() => {
+    if (!isCelebrating) return;
+
+    const timeout = setTimeout(() => {
+      // Single-flight guard - don't double-progress
+      if (progressedRef.current) {
+        console.log('[WorkoutScreen] ⏭️  Failsafe skipped - already progressed');
+        return;
+      }
+      progressedRef.current = true;
+
+      // Log telemetry for debugging
+      const buttonDone = done.current.button;
+      const kissDone = done.current.kiss;
+      console.warn('[WorkoutScreen] ⚠️  Failsafe triggered (button:', buttonDone, ', kiss:', kissDone, ') - forcing progression');
+
+      // Force unlock without resetting barrier flags
+      endCelebration(true);
+
+      // Force progression
+      handleCompleteSetLogic().catch(err => {
+        console.error('[WorkoutScreen] Set completion error:', err);
+      });
+    }, failsafeMs);
+
+    return () => clearTimeout(timeout);
+  }, [isCelebrating, failsafeMs]);
+
+  // Interrupt animations if app goes to background/inactive
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState.match(/inactive|background/) && isCelebrating) {
+        console.log('[WorkoutScreen] App backgrounded during celebration - cleaning up');
+        buttonRef.current?.interrupt();
+        setShowKissMark(false);
+        endCelebration();
+      }
+    });
+
+    return () => subscription?.remove();
+  }, [isCelebrating]);
+
+  // Cleanup on navigation blur
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        // Cleanup when screen loses focus
+        buttonRef.current?.interrupt();
+        setShowKissMark(false);
+        endCelebration();
+      };
+    }, [])
+  );
 
   // Handle MAX TEST commit (called from TIME 2 PARTY button)
   const handleMaxTestCommit = async () => {
@@ -608,14 +808,15 @@ export default function WorkoutScreen({ navigation, route }) {
 
         {/* CTA */}
         <View style={styles.ctaSection}>
-          <NeonBarButton
-            title={isMaxTestDay ? "COMPLETE MAX TEST" : "SMOKED HER"}
-            onPress={handleCompleteSet}
-            colors={{
-              primary: tokens.brand.primary,
-              secondary: tokens.brand.secondary
-            }}
-            height={52}
+          <AnimatedBeachBallButtonV2
+            ref={buttonRef}
+            label={isMaxTestDay ? "COMPLETE MAX TEST" : "SMOKED HER"}
+            onPress={onCtaPress}
+            onAnimationComplete={onButtonComplete}
+            disabled={isCelebrating}
+            autoPlayOnPress={true}
+            showGloss={false}
+            accessibilityLabel={isMaxTestDay ? "Complete max test button" : "Smoked her button"}
           />
         </View>
       </>
@@ -923,7 +1124,7 @@ export default function WorkoutScreen({ navigation, route }) {
       {/* 🎯 KISS MARK OVERLAY - Shows on button press */}
       <AnimatedKissMark
         visible={showKissMark}
-        onComplete={() => setShowKissMark(false)}
+        onComplete={onKissComplete}
         color={tokens.brand.secondary}  // Cyan
         size={140}  // Large for impact
         glow={false}  // No blue circle, just kiss mark
