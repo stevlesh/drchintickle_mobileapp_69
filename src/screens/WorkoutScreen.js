@@ -681,23 +681,26 @@ export default function WorkoutScreen({ navigation, route }) {
     }, 100);
   }
 
-  const handleBackToDashboard = () => {
+  const handleBackToDashboard = async () => {
     // Clear workout timer
     if (workoutTimerRef.current) {
       clearInterval(workoutTimerRef.current);
       workoutTimerRef.current = null;
     }
-    
+
     // Clear rest state (deadline-based timer cleans up automatically via useEffect)
     setDeadline(null);
     setRestArmed(false);
-    
+
+    // Cancel any pending rest notifications
+    await cancelRestNotification();
+
     // Reset the WorkoutStack to PreWorkout screen first
     navigation.reset({
       index: 0,
       routes: [{ name: 'PreWorkout' }],
     });
-    
+
     // Then navigate to Home tab
     navigation.navigate('Home')
   }

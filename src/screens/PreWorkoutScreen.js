@@ -218,10 +218,12 @@ const PreWorkoutScreen = ({ route, navigation }) => {
             )}
 
             {/* Quote */}
-            <View style={styles.glassCard}>
+            <View style={[styles.glassCard, { padding: 0, borderRadius: 14 }]}>
               <QuoteChipMeasured
                 text={quote || 'Pain is weakness leaving the body!'}
                 suppressContainer={true}
+                paddingH={18}
+                paddingV={14}
               />
             </View>
 
