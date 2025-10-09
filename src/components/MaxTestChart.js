@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { colors } from '../theme/typography';
+import { tokens, palette } from '../theme/tokens';
 
 /**
  * MaxTestChart - Clean Miami Vice styled chart for pull-up progression
@@ -141,9 +142,8 @@ export default function MaxTestChart({ maxTestHistory = [] }) {
                   {/* Tooltip */}
                   {selectedPoint === index && (
                     <View style={styles.tooltip}>
-                      <Text style={styles.tooltipText}>
-                        {point.pullups} reps{'\n'}{point.date}
-                      </Text>
+                      <Text style={styles.tooltipDate}>{point.date}</Text>
+                      <Text style={styles.tooltipReps}>{point.pullups} reps</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -284,21 +284,39 @@ const styles = StyleSheet.create({
   },
   tooltip: {
     position: 'absolute',
-    top: -50,
-    left: -25,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    borderColor: colors.electricCyan,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 4,
-    minWidth: 50,
+    top: -60,
+    left: -45,
+    backgroundColor: tokens.component.glassPanel.background,
+    borderColor: '#00FFFF',
+    borderWidth: 1.5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 90,
+    shadowColor: '#00FFFF',
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
   },
-  tooltipText: {
+  tooltipDate: {
     fontFamily: 'IBMPlexMono_400Regular',
-    fontSize: 12,
-    color: colors.white,
+    fontSize: 10,
+    color: palette.warmWhite,
     textAlign: 'center',
+    opacity: 0.8,
+    marginBottom: 2,
+    textShadowColor: '#00FFFF',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
+  },
+  tooltipReps: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 14,
+    color: '#FFA94D',
+    textAlign: 'center',
+    textShadowColor: '#FFA94D',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
   },
   xAxis: {
     position: 'relative',

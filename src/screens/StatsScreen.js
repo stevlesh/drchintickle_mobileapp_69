@@ -109,8 +109,8 @@ const StatsScreen = ({ navigation }) => {
             count={completedCycles}
             label="COMPLETED"
             sublabel="workout cycles"
-            borderColor={colors.hotPink}
-            glowColor={colors.hotPink}
+            borderColor="#FF4DA6"
+            glowColor="#FF4DA6"
             gradientColors={tokens.gradient.statPink}
           />
 
@@ -119,9 +119,9 @@ const StatsScreen = ({ navigation }) => {
             count={sessionsRemaining}
             label="REMAINING"
             sublabel="sessions in cycle"
-            borderColor={colors.electricCyan}
-            glowColor={colors.electricCyan}
-            gradientColors={tokens.gradient.statCyan}
+            borderColor="#FF4DA6"
+            glowColor="#FF4DA6"
+            gradientColors={tokens.gradient.statPink}
           />
         </View>
 
@@ -129,8 +129,8 @@ const StatsScreen = ({ navigation }) => {
         {/* Stats Card Row 3: Training Consistency (full width) */}
         <View style={styles.consistencyRow}>
           <GlassCard
-            borderColor={colors.neonYellow}
-            glowColor={colors.neonYellow}
+            borderColor="#FFA94D"
+            glowColor="#FFA94D"
             style={styles.consistencyCard}>
             <View style={styles.consistencyWrapper}>
               <View style={styles.consistencyContent}>
@@ -174,10 +174,10 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: tokens.component.glassPanel.background,
     borderWidth: 1.5,
-    borderColor: tokens.component.glassPanel.border,
-    shadowColor: tokens.component.glassPanel.glow.color,
-    shadowOpacity: tokens.component.glassPanel.glow.opacity,
-    shadowRadius: tokens.component.glassPanel.glow.radius,
+    borderColor: '#FF77FF',
+    shadowColor: '#FF77FF',
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
     elevation: 8,
   },
@@ -217,19 +217,19 @@ const styles = StyleSheet.create({
     height: 65,
     borderRadius: 32.5,
     borderWidth: 2.5,
-    borderColor: colors.neonYellow,
+    borderColor: '#FFA94D',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.neonYellow,
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
+    shadowColor: '#FFA94D',
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
   },
   circlePercentage: {
     fontFamily: 'IBMPlexMono_700Bold',
     fontSize: 14,
-    color: colors.neonYellow,
-    textShadowColor: colors.neonYellow,
+    color: '#FFFFFF',
+    textShadowColor: '#FFA94D',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 6,
     textAlign: 'center',

@@ -93,8 +93,9 @@ export const tokens = {
   
   // Gradient system for stat cards
   gradient: {
-    statPink: ['#8b005c', '#3e0066'],
-    statCyan: ['#0066cc', '#003366'],
+    statPink: ['#A83B9E', '#3e0066'],      // Deep magenta → dark purple (subdued glass panel)
+    statOrange: ['#FF6B35', '#D95D39'],    // Bright coral-orange → deep orange (sunset glow)
+    statCyan: ['#1a4d66', '#0d2633'],      // Deep teal → darker navy (subdued glass panel) - deprecated
     nightBeach: ['#FF4DA6', '#A83B9E', '#1A1033'],  // Main background gradient (Home vibe)
     trainingConsistency: ['#FFA94D', '#FF77FF'],    // Coral → Pink (optional)
   },

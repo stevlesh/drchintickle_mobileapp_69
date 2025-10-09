@@ -76,33 +76,35 @@ export default function GainsTitleBand({
         />
       )}
 
-      {/* Poster band: sun behind GAINS */}
+      {/* Poster band: GAINS */}
       <View style={styles.band}>
-        <View pointerEvents="none" style={[styles.sun, { width: sunSize, height: sunSize }]}>
-          <Svg width="100%" height="100%" viewBox="0 0 160 160">
-            <G opacity="0.45">
-              <Circle cx="80" cy="80" r="68" fill="#FF6B6B" />
-              {[...Array(6)].map((_, i) => (
-                <Line key={i} x1="24" x2="136" y1={56 + i * 12} y2={56 + i * 12} stroke={COLORS.mango} strokeWidth="4" opacity="0.75" />
-              ))}
-            </G>
-          </Svg>
-        </View>
-
         <View style={styles.gainsRow}>
-          <MaskedView maskElement={MaskText} style={{ alignSelf: 'center' }}>
-            {/* base gradient text */}
-            <LinearGradient colors={[COLORS.cyan, '#A5F3FC', COLORS.mango]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text
-                style={[styles.gainsBase, { fontSize, letterSpacing, opacity: 0 }]}
-                onLayout={e => {
-                  const w = Math.round(e.nativeEvent.layout.width);
-                  if (w && w !== textW) setTextW(w);
-                }}
-              >
-                GAINS
-              </Text>
-            </LinearGradient>
+          <View style={{
+            shadowColor: '#00FFFF',
+            shadowOpacity: 1.0,
+            shadowRadius: 40,
+            shadowOffset: { width: 0, height: 0 },
+          }}>
+            <MaskedView maskElement={MaskText} style={{ alignSelf: 'center' }}>
+              {/* base gradient text */}
+              <LinearGradient colors={['#FF77FF', '#FF4DA6', '#FFA94D']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                <Text
+                  style={[styles.gainsBase, {
+                    fontSize,
+                    letterSpacing,
+                    opacity: 0,
+                    textShadowColor: '#FFFFFF',
+                    textShadowRadius: 12,
+                    textShadowOffset: { width: 0, height: 0 },
+                  }]}
+                  onLayout={e => {
+                    const w = Math.round(e.nativeEvent.layout.width);
+                    if (w && w !== textW) setTextW(w);
+                  }}
+                >
+                  GAINS
+                </Text>
+              </LinearGradient>
 
             {/* shimmering highlight — SAME MaskedView, sits on top */}
             {!reduceMotion && (
@@ -129,7 +131,8 @@ export default function GainsTitleBand({
                 />
               </Animated.View>
             )}
-          </MaskedView>
+            </MaskedView>
+          </View>
         </View>
       </View>
 
@@ -160,7 +163,7 @@ const styles = StyleSheet.create({
     height: 2,
     marginTop: 8,
     borderRadius: 2,
-    backgroundColor: COLORS.cyan,
+    backgroundColor: '#00FFFF',
     opacity: 0.55,
   },
 });
