@@ -12,6 +12,7 @@ import SetBreakdownCompactGrid from '../components/SetBreakdownCompactGrid'
 import WorkoutProgressTracker from '../components/WorkoutProgressTracker'
 import QuoteChipMeasured from '../components/QuoteChipMeasured'
 import NeonSnowfall from '../components/NeonSnowfall'
+import AnimatedKissMark from '../components/AnimatedKissMark'
 // Premium components for Max Test completion
 import NeonGlowFrame from '../components/premium/NeonGlowFrame'
 import NeonNumber from '../components/premium/NeonNumber'
@@ -115,6 +116,9 @@ export default function WorkoutScreen({ navigation, route }) {
   const [maxTestData, setMaxTestData] = useState(null);
   const [previousMaxData, setPreviousMaxData] = useState({ max: null, date: null, loading: true });
   const sessionKeyRef = useRef(null);
+
+  // Kiss mark animation state
+  const [showKissMark, setShowKissMark] = useState(false);
   
   // Animation for rep number pulse and flicker
   const pulseAnim = useRef(new Animated.Value(0)).current;
@@ -284,6 +288,9 @@ export default function WorkoutScreen({ navigation, route }) {
   const handleCompleteSet = async () => {
     // Cancel any pending rest notification from previous set
     await cancelRestNotification();
+
+    // 🎯 TRIGGER KISS MARK ANIMATION
+    setShowKissMark(true);
 
     // Add current reps to completed array
     setRepsCompleted(prev => [...prev, currentReps])
@@ -601,12 +608,12 @@ export default function WorkoutScreen({ navigation, route }) {
 
         {/* CTA */}
         <View style={styles.ctaSection}>
-          <NeonBarButton 
-            title={isMaxTestDay ? "COMPLETE MAX TEST" : "COMPLETE SET"} 
+          <NeonBarButton
+            title={isMaxTestDay ? "COMPLETE MAX TEST" : "SMOKED HER"}
             onPress={handleCompleteSet}
-            colors={{ 
-              primary: tokens.brand.primary, 
-              secondary: tokens.brand.secondary 
+            colors={{
+              primary: tokens.brand.primary,
+              secondary: tokens.brand.secondary
             }}
             height={52}
           />
@@ -912,6 +919,15 @@ export default function WorkoutScreen({ navigation, route }) {
           </View>
         </View>
       </ScrollView>
+
+      {/* 🎯 KISS MARK OVERLAY - Shows on button press */}
+      <AnimatedKissMark
+        visible={showKissMark}
+        onComplete={() => setShowKissMark(false)}
+        color={tokens.brand.secondary}  // Cyan
+        size={140}  // Large for impact
+        glow={false}  // No blue circle, just kiss mark
+      />
     </BackgroundContainer>
   )
 }
