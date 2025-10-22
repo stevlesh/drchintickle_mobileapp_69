@@ -17,7 +17,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "2",
+      "buildNumber": "3",
       "bundleIdentifier": "com.drchintickle.app",
       "infoPlist": {
         "CFBundleURLTypes": [
@@ -69,11 +69,7 @@
       "url": "https://u.expo.dev/c872a76c-b7c9-47cc-8b5e-b7a44933a57b"
     },
     "plugins": [
-      "expo-localization",
-      "expo-notifications"
-    ],
-    "notification": {
-      "iosDisplayInForeground": true
-    }
+      "expo-localization"
+    ]
   }
 }

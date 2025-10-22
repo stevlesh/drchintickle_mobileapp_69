@@ -1,25 +1,25 @@
 // src/notificationsInit.js
-import * as Notifications from 'expo-notifications';
+import notifee, { AndroidImportance } from '@notifee/react-native';
 import { Platform } from 'react-native';
 
 export async function initNotifications() {
-  // One global handler (runs once in app root)
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
-  });
+  // Notifee handles foreground display automatically via display hints
+  // No need for explicit handler like expo-notifications
 
-  // Android 8+: use a channel or sound/priority may be ignored
+  // Android 8+: Create notification channel
+  // Note: Vibration pattern set at channel level (Android only)
+  // iOS uses system default vibration
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('rest-timer', {
+    await notifee.createChannel({
+      id: 'rest-timer',
       name: 'Rest Timer',
-      importance: Notifications.AndroidImportance.HIGH,
-      sound: 'default', // Phase 1 = system ding; Phase 2 swaps to custom
-      vibrationPattern: [0, 250, 250, 250],
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      importance: AndroidImportance.HIGH,
+      sound: 'default',
+      vibration: true,
+      vibrationPattern: [300, 500],
+      visibility: 1, // VISIBILITY_PUBLIC
     });
   }
+
+  // iOS: No setup needed - Notifee handles permissions + display automatically
 }

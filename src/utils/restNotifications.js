@@ -1,57 +1,76 @@
 // src/utils/restNotifications.js
-import * as Notifications from 'expo-notifications';
+import notifee, { AuthorizationStatus } from '@notifee/react-native';
 import { Platform } from 'react-native';
 
 let activeNotificationId = null;
 
 export async function hasNotificationPermission() {
-  const perms = await Notifications.getPermissionsAsync();
-  return !!perms.granted;
+  const settings = await notifee.getNotificationSettings();
+  return settings.authorizationStatus === AuthorizationStatus.AUTHORIZED;
 }
 
 export async function requestNotificationPermissions() {
-  const cur = await Notifications.getPermissionsAsync();
-  if (cur.granted) return true;
-  const req = await Notifications.requestPermissionsAsync();
-  return !!req.granted;
+  const current = await notifee.getNotificationSettings();
+
+  if (current.authorizationStatus === AuthorizationStatus.AUTHORIZED) {
+    return true;
+  }
+
+  const settings = await notifee.requestPermission();
+  return settings.authorizationStatus === AuthorizationStatus.AUTHORIZED;
 }
 
 export async function scheduleRestCompleteNotification(seconds = 120) {
   try {
     // De-dupe: only one pending rest notification at a time
     if (activeNotificationId) {
-      await Notifications.cancelScheduledNotificationAsync(activeNotificationId);
+      await notifee.cancelNotification(activeNotificationId);
       activeNotificationId = null;
     }
 
     const granted = await hasNotificationPermission();
     if (!granted) return null;
 
-    const id = await Notifications.scheduleNotificationAsync({
-      content: {
+    // Calculate fire timestamp (UNIX timestamp in milliseconds)
+    const fireTimestamp = Date.now() + seconds * 1000;
+
+    // Create trigger for scheduled notification
+    const trigger = {
+      type: 0, // TimestampTrigger (bypasses 15-min iOS minimum for IntervalTrigger)
+      timestamp: fireTimestamp,
+    };
+
+    // Create notification
+    const id = await notifee.createTriggerNotification(
+      {
         title: 'Rest complete 💪',
         body: 'Time to crush your next set.',
-        sound: true, // Changed from 'default' to true for better iOS compatibility
-        vibrate: [0, 250, 250, 250],
         data: { type: 'rest_complete' },
+        ...(Platform.OS === 'android' && {
+          android: {
+            channelId: 'rest-timer',
+            sound: 'default',
+            pressAction: {
+              id: 'default',
+            },
+          },
+        }),
         ...(Platform.OS === 'ios' && {
-          interruptionLevel: 'timeSensitive', // Makes sound more prominent on iOS
+          ios: {
+            sound: 'default',
+            interruptionLevel: 'timeSensitive',
+          },
         }),
       },
-      trigger: Platform.OS === 'ios'
-        ? new Date(Date.now() + seconds * 1000) // A/B TEST: Use Date trigger instead of time-interval
-        : {
-            seconds: seconds,
-            channelId: 'rest-timer',
-          },
-    });
+      trigger
+    );
 
     activeNotificationId = id;
 
     // Debug: verify notification scheduled correctly
     if (__DEV__) {
-      const fireTime = new Date(Date.now() + seconds * 1000);
-      console.log(`✅ REST NOTIFICATION SCHEDULED (DATE TRIGGER TEST):`);
+      const fireTime = new Date(fireTimestamp);
+      console.log(`✅ REST NOTIFICATION SCHEDULED (NOTIFEE):`);
       console.log(`   - ID: ${id}`);
       console.log(`   - Will fire at: ${fireTime.toLocaleTimeString()}`);
     }
@@ -66,7 +85,7 @@ export async function scheduleRestCompleteNotification(seconds = 120) {
 export async function cancelRestNotification() {
   try {
     if (activeNotificationId) {
-      await Notifications.cancelScheduledNotificationAsync(activeNotificationId);
+      await notifee.cancelNotification(activeNotificationId);
       activeNotificationId = null;
     }
   } catch (e) {
