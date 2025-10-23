@@ -135,9 +135,14 @@ export default function App() {
   // Initialize notifications once on app start
   useEffect(() => {
     (async () => {
-      await initNotifications();
-      // Ask once on app start
-      await requestNotificationPermissions().catch(() => {});
+      try {
+        await initNotifications();
+        // Ask once on app start
+        await requestNotificationPermissions();
+      } catch (error) {
+        // Log but never throw - prevent production crashes during init
+        console.warn('[App] Notification init failed (non-fatal):', error);
+      }
     })();
   }, []);
 
