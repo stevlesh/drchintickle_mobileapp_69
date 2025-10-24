@@ -23,7 +23,8 @@ import { tokens } from '../theme/tokens'
 import { getQuoteWithAuthor, getQuote } from '../utils/quotes'
 import { supabase } from '../lib/supabase';
 import { bus } from '../lib/bus';
-import { scheduleRestCompleteNotification, cancelRestNotification } from '../utils/restNotifications';
+// REMOVED for Build 9: Will re-add in Build 10 with expo-notifications
+// import { scheduleRestCompleteNotification, cancelRestNotification } from '../utils/restNotifications';
 import AnimatedBeachBallButtonV2 from '../components/AnimatedBeachBallButtonV2';
 import { CELEBRATION } from '../utils/celebrationConstants';
 import * as Haptics from 'expo-haptics';
@@ -224,8 +225,9 @@ export default function WorkoutScreen({ navigation, route }) {
     setRestArmed(seconds > 2);  // Arm immediately if > 2 seconds
     setPageState('resting');    // Render rest UI
 
+    // REMOVED for Build 9: Will re-add in Build 10 with expo-notifications
     // Schedule notification for when rest completes (Phase 2 will add custom sound)
-    await scheduleRestCompleteNotification(seconds);
+    // await scheduleRestCompleteNotification(seconds);
   }, []);
 
   // Initialize workout timer
@@ -284,8 +286,9 @@ export default function WorkoutScreen({ navigation, route }) {
     setRestArmed(false);
     setPageState('active_set');
 
+    // REMOVED for Build 9: Will re-add in Build 10 with expo-notifications
     // Cancel notification when rest completes naturally
-    await cancelRestNotification();
+    // await cancelRestNotification();
   }, [restArmed]);
 
   // Handle rest skip - cancel notification when user manually starts set early
@@ -295,8 +298,9 @@ export default function WorkoutScreen({ navigation, route }) {
     setRestArmed(false);
     setPageState('active_set');
 
+    // REMOVED for Build 9: Will re-add in Build 10 with expo-notifications
     // Cancel notification since user started set early
-    await cancelRestNotification();
+    // await cancelRestNotification();
   }, [pageState]);
 
   // Removed buggy monitor effect - let NeonCountdown be single authority
@@ -428,8 +432,9 @@ export default function WorkoutScreen({ navigation, route }) {
 
   // Extracted set completion logic (async operations)
   const handleCompleteSetLogic = async () => {
+    // REMOVED for Build 9: Will re-add in Build 10 with expo-notifications
     // Cancel any pending rest notification from previous set
-    await cancelRestNotification();
+    // await cancelRestNotification();
 
     // Add current reps to completed array
     setRepsCompleted(prev => [...prev, currentReps]);
@@ -692,8 +697,9 @@ export default function WorkoutScreen({ navigation, route }) {
     setDeadline(null);
     setRestArmed(false);
 
+    // REMOVED for Build 9: Will re-add in Build 10 with expo-notifications
     // Cancel any pending rest notifications
-    await cancelRestNotification();
+    // await cancelRestNotification();
 
     // Reset the WorkoutStack to PreWorkout screen first
     navigation.reset({

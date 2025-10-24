@@ -23,8 +23,9 @@ import { installAuthLinking } from './src/auth/supabaseAuth'
 import { navigationRef, resetTo, flushPendingNavigation } from './src/navigation/navigationRef'
 import { recoverFromStaleToken } from './src/utils/authRecovery'
 import { clearWorkoutPlanCache } from './src/utils/workoutApi'
-import { initNotifications } from './src/notificationsInit'
-import { requestNotificationPermissions } from './src/utils/restNotifications'
+// REMOVED for Build 9: Will re-add in Build 10 with expo-notifications
+// import { initNotifications } from './src/notificationsInit'
+// import { requestNotificationPermissions } from './src/utils/restNotifications'
 
 // Import screens
 import LoadingScreen from './src/screens/LoadingScreen'
@@ -132,19 +133,20 @@ export default function App() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // REMOVED for Build 9: Will re-add in Build 10 with expo-notifications
   // Initialize notifications once on app start
-  useEffect(() => {
-    (async () => {
-      try {
-        await initNotifications();
-        // Ask once on app start
-        await requestNotificationPermissions();
-      } catch (error) {
-        // Log but never throw - prevent production crashes during init
-        console.warn('[App] Notification init failed (non-fatal):', error);
-      }
-    })();
-  }, []);
+  // useEffect(() => {
+  //   (async () => {
+  //     try {
+  //       await initNotifications();
+  //       // Ask once on app start
+  //       await requestNotificationPermissions();
+  //     } catch (error) {
+  //       // Log but never throw - prevent production crashes during init
+  //       console.warn('[App] Notification init failed (non-fatal):', error);
+  //     }
+  //   })();
+  // }, []);
 
   // Preload assets
   useEffect(() => {
