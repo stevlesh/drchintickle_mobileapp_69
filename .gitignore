@@ -45,3 +45,7 @@ supabase/.branches/
 STABLE_STATE_RECOVERY.md
 check-session.js
 expo-config-backup.json
+
+# Test files with keys
+test-*.js
+verify-trigger.js
