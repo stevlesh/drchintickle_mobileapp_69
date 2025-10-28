@@ -41,3 +41,7 @@ build-*.tar.gz
 supabase/temp/
 supabase/.temp/
 supabase/.branches/
+# Recovery/debug files with keys
+STABLE_STATE_RECOVERY.md
+check-session.js
+expo-config-backup.json
