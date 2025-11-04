@@ -11,6 +11,7 @@ import {
   TouchableOpacity
 } from 'react-native'
 import { Eye, EyeSlash, Champagne, Cigarette } from 'phosphor-react-native'
+import { useNavigation } from '@react-navigation/native'
 
 import { supabase } from '../lib/supabase'
 import BackgroundContainer from '../components/BackgroundContainer'
@@ -24,6 +25,8 @@ import { tokens } from '../theme/tokens'
 import { getQuote } from '../utils/quotes'
 
 export default function LoginScreen() {
+  const navigation = useNavigation()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordHidden, setPasswordHidden] = useState(true)
@@ -81,81 +84,86 @@ export default function LoginScreen() {
     };
   }, [showEmailAlert])
 
-  // OAuth polling with 60s escalation
-  useEffect(() => {
-    let pollCount = 0;
-    const maxPolls = 20; // 60 seconds (20 * 3 seconds)
-    let interval;
+  /* REMOVED FOR APP STORE COMPLIANCE - Guideline 4.8
+     OAuth polling disabled along with Google sign-in button.
+     This prevents "Google sign-in timed out" errors when loading state is true.
+     Will re-enable with Apple Sign-In in future update.
+  */
+  // // OAuth polling with 60s escalation
+  // useEffect(() => {
+  //   let pollCount = 0;
+  //   const maxPolls = 20; // 60 seconds (20 * 3 seconds)
+  //   let interval;
 
-    const checkForOAuthSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+  //   const checkForOAuthSession = async () => {
+  //     try {
+  //       const { data: { session }, error } = await supabase.auth.getSession();
 
-        if (error) {
-          console.error('Error getting session:', error);
-          setFormError('Authentication error. Please try again.');
-          setLoading(false);
-          return;
-        }
+  //       if (error) {
+  //         console.error('Error getting session:', error);
+  //         setFormError('Authentication error. Please try again.');
+  //         setLoading(false);
+  //         return;
+  //       }
 
-        if (session) {
-          console.log('Session detected! User:', session.user.email);
-          clearInterval(interval);
-          setLoading(false);
-          setOauthPollingTime(0);
-          setShowOAuthEscalation(false);
-          await supabase.auth.refreshSession();
-          return;
-        }
+  //       if (session) {
+  //         console.log('Session detected! User:', session.user.email);
+  //         clearInterval(interval);
+  //         setLoading(false);
+  //         setOauthPollingTime(0);
+  //         setShowOAuthEscalation(false);
+  //         await supabase.auth.refreshSession();
+  //         return;
+  //       }
 
-        if (loading) {
-          pollCount++;
-          setOauthPollingTime(pollCount * 3);
-          console.log(`Polling for session... (${pollCount}/${maxPolls})`);
+  //       if (loading) {
+  //         pollCount++;
+  //         setOauthPollingTime(pollCount * 3);
+  //         console.log(`Polling for session... (${pollCount}/${maxPolls})`);
 
-          // Show escalation after 60 seconds
-          if (pollCount === 20) {
-            setShowOAuthEscalation(true);
-          }
+  //         // Show escalation after 60 seconds
+  //         if (pollCount === 20) {
+  //           setShowOAuthEscalation(true);
+  //         }
 
-          // Hard timeout at 90 seconds
-          if (pollCount >= 30) {
-            console.log('OAuth polling timeout reached');
-            clearInterval(interval);
-            setLoading(false);
-            setOauthPollingTime(0);
-            setFormError('Google sign-in timed out. Please try email login.');
-          }
-        }
-      } catch (error) {
-        console.error('Error checking for session:', error);
-        setFormError('Connection error. Please check your network.');
-      }
-    };
+  //         // Hard timeout at 90 seconds
+  //         if (pollCount >= 30) {
+  //           console.log('OAuth polling timeout reached');
+  //           clearInterval(interval);
+  //           setLoading(false);
+  //           setOauthPollingTime(0);
+  //           setFormError('Google sign-in timed out. Please try email login.');
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error('Error checking for session:', error);
+  //       setFormError('Connection error. Please check your network.');
+  //     }
+  //   };
 
-    if (loading) {
-      console.log('Starting OAuth session polling...');
-      checkForOAuthSession();
-      interval = setInterval(checkForOAuthSession, 3000);
-    }
+  //   if (loading) {
+  //     console.log('Starting OAuth session polling...');
+  //     checkForOAuthSession();
+  //     interval = setInterval(checkForOAuthSession, 3000);
+  //   }
 
-    // Handle OAuth redirects
-    const handleUrl = (url) => {
-      console.log('Handling URL:', url);
-      if (url.includes('access_token') || url.includes('error')) {
-        checkForOAuthSession();
-      }
-    };
+  //   // Handle OAuth redirects
+  //   const handleUrl = (url) => {
+  //     console.log('Handling URL:', url);
+  //     if (url.includes('access_token') || url.includes('error')) {
+  //       checkForOAuthSession();
+  //     }
+  //   };
 
-    const subscription = Linking.addEventListener('url', (event) => {
-      handleUrl(event.url);
-    });
+  //   const subscription = Linking.addEventListener('url', (event) => {
+  //     handleUrl(event.url);
+  //   });
 
-    return () => {
-      if (interval) clearInterval(interval);
-      subscription?.remove();
-    };
-  }, [loading])
+  //   return () => {
+  //     if (interval) clearInterval(interval);
+  //     subscription?.remove();
+  //   };
+  // }, [loading])
 
   // Clear errors when inputs change
   useEffect(() => {
@@ -460,7 +468,12 @@ export default function LoginScreen() {
                   showIcon={false}
                 />
 
-                <NeonBarButton
+                {/* REMOVED FOR APP STORE COMPLIANCE - Guideline 4.8
+                    Google OAuth removed to avoid requiring Sign in with Apple.
+                    Backend OAuth still functional for existing users who need password reset.
+                    Will re-add with Apple Sign-In in future update.
+                */}
+                {/* <NeonBarButton
                   title={loading ? 'SIGNING IN…' : 'CONTINUE WITH GOOGLE'}
                   onPress={signInWithGoogle}
                   disabled={loading}
@@ -471,8 +484,18 @@ export default function LoginScreen() {
                   }}
                   height={52}
                   showIcon={false}
-                />
+                /> */}
               </View>
+              {/* END buttonStack */}
+
+              {/* Pre-auth onboarding access - Guideline 5.1.1 compliance */}
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Onboarding', { preAuth: true })}
+                style={styles.howItWorksButton}
+                disabled={loading}
+              >
+                <Text style={styles.howItWorksText}>How It Works</Text>
+              </TouchableOpacity>
             </GlassCard>
 
             <View style={{ marginTop: 40 }}>
@@ -701,5 +724,25 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     lineHeight: 22,
     fontSize: 16,
+  },
+  howItWorksButton: {
+    alignSelf: 'center',
+    marginTop: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.electricCyan,
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+  },
+  howItWorksText: {
+    color: colors.electricCyan,
+    fontSize: 14,
+    fontFamily: 'IBMPlexMono_700Bold',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    textShadowColor: colors.electricCyan,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
 })

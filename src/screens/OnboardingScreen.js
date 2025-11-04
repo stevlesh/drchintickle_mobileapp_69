@@ -67,7 +67,9 @@ const NeonArrow = ({ color = colors.electricCyan }) => {
   );
 };
 
-const OnboardingScreen = ({ navigation }) => {
+const OnboardingScreen = ({ navigation, route }) => {
+  const preAuth = route?.params?.preAuth ?? false; // Preview mode flag (using ?? instead of ||)
+
   const [currentScreen, setCurrentScreen] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -229,14 +231,14 @@ const OnboardingScreen = ({ navigation }) => {
       </GlassCard>
 
       {/* Completion button */}
-      <TouchableOpacity 
-        onPress={completeOnboarding} 
+      <TouchableOpacity
+        onPress={preAuth ? () => navigation.navigate('Login') : completeOnboarding}
         style={[
           styles.cheersButtonContainer,
           isSubmitting && { opacity: 0.5 } // Visual feedback during submission
         ]}
         activeOpacity={0.8}
-        disabled={isSubmitting} // Prevent interaction during submission
+        disabled={!preAuth && isSubmitting} // Prevent interaction during submission
       >
         <LinearGradient
           colors={[colors.hotPink, colors.brightPink, colors.purple]}
@@ -437,6 +439,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 40,
+  },
+  ctaButtonText: {
+    fontFamily: 'IBMPlexMono_700Bold',
+    fontSize: 16,
+    color: colors.white,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
 });
 

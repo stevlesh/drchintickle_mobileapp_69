@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, Text, StyleSheet, View, TouchableOpacity } from 'react-native';
+import { ScrollView, Text, StyleSheet, View, TouchableOpacity, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import BackgroundContainer from '../components/BackgroundContainer';
@@ -20,6 +20,8 @@ import WorkoutProgressTracker from '../components/WorkoutProgressTracker';
 import { getQuote, getDashboardQuote } from '../utils/quotes';
 import { generateWorkout } from '../utils/workoutApi';
 import QuoteChipMeasured from '../components/QuoteChipMeasured';
+import DeleteAccountModal from '../components/DeleteAccountModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DashboardScreen = ({ navigation }) => {
   const [userStats, setUserStats] = useState({
@@ -39,6 +41,8 @@ const DashboardScreen = ({ navigation }) => {
   const [currentQuote, setCurrentQuote] = useState(null);
   const [quoteContext, setQuoteContext] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch dashboard stats from server (replaces client-side calculations)
   const fetchDashboardStats = async () => {
@@ -123,6 +127,60 @@ const DashboardScreen = ({ navigation }) => {
   const handleLogout = async () => {
     await supabase.auth.signOut()
   }
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    console.log('[Delete] Starting deletion process...');
+
+    try {
+      // Call Edge Function to delete account
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        console.error('[Delete] No session found');
+        setIsDeleting(false);
+        setShowDeleteModal(false);
+        return;
+      }
+
+      console.log('[Delete] Calling Edge Function...');
+      const { data, error } = await supabase.functions.invoke('delete-account', {
+        body: {}, // CRITICAL FIX #4: Explicit body parameter
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error('[Delete] Error deleting account:', error);
+        Alert.alert('Deletion Failed', 'Failed to delete account. Please try again.'); // CRITICAL FIX #2
+        setIsDeleting(false);
+        return;
+      }
+
+      console.log('[Delete] Account deleted successfully:', data);
+      console.log('[Delete] Clearing AsyncStorage...');
+
+      // Clear all local cached data
+      await AsyncStorage.clear();
+      console.log('[Delete] AsyncStorage cleared');
+
+      // CRITICAL FIX #5: Add error handling for signOut
+      console.log('[Delete] Signing out...');
+      try {
+        await supabase.auth.signOut();
+      } catch (signOutError) {
+        console.error('[Delete] Sign out error after deletion:', signOutError);
+        // Force navigation to login even if signOut fails
+        // The auth state listener should handle this, but log for debugging
+      }
+
+    } catch (error) {
+      console.error('[Delete] Delete account error:', error);
+      Alert.alert('Error', 'An error occurred. Please try again.'); // CRITICAL FIX #2
+      setIsDeleting(false);
+    }
+  };
 
   const handleWorkoutPress = () => {
     // Check if this is a max test day (workout 1)
@@ -209,7 +267,23 @@ const DashboardScreen = ({ navigation }) => {
         <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
+
+        {/* Delete Account Button - App Store Requirement */}
+        <TouchableOpacity
+          onPress={() => setShowDeleteModal(true)}
+          style={[styles.logoutButton, styles.deleteButton]}
+        >
+          <Text style={styles.deleteText}>Delete Account</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      {/* Delete Account Modal */}
+      <DeleteAccountModal
+        visible={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteAccount}
+        isDeleting={isDeleting}
+      />
     </BackgroundContainer>
   );
 };
@@ -266,6 +340,21 @@ const styles = StyleSheet.create({
     ...textStyles.smallText,
     fontFamily: 'IBMPlexMono_400Regular',
     color: colors.mediumGray,
+  },
+  deleteButton: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.5)',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  deleteText: {
+    ...textStyles.smallText,
+    fontFamily: 'IBMPlexMono_700Bold',
+    color: colors.orange,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   quoteTextDirect: {
     ...textStyles.quote,
