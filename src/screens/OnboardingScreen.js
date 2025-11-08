@@ -232,7 +232,7 @@ const OnboardingScreen = ({ navigation, route }) => {
 
       {/* Completion button */}
       <TouchableOpacity
-        onPress={preAuth ? () => navigation.navigate('Login') : completeOnboarding}
+        onPress={preAuth ? () => navigation.navigate('Welcome') : completeOnboarding}
         style={[
           styles.cheersButtonContainer,
           isSubmitting && { opacity: 0.5 } // Visual feedback during submission

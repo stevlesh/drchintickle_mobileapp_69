@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { colors, textStyles } from '../theme/typography';
 import NeonPalmTree from './NeonPalmTree';
+import { ArrowLeft } from 'phosphor-react-native';
 
 const NeonHeader = ({ 
   subtitle, 
@@ -9,6 +10,10 @@ const NeonHeader = ({
   style = {},
   titleSize = 42,
   subtitleSize = 14,
+  // Back affordance
+  showBack = false,
+  onBackPress,
+  backLabel = 'Back',
 }) => {
   // Platform-specific text styles
   const titleStyles = [
@@ -25,6 +30,19 @@ const NeonHeader = ({
 
   return (
     <View style={[styles.container, style]}>
+      {/* Back control integrated into header */}
+      {showBack && (
+        <TouchableOpacity
+          onPress={onBackPress}
+          accessibilityRole="button"
+          accessibilityLabel={backLabel}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={styles.backWrap}
+        >
+          <ArrowLeft size={22} color={colors.electricCyan} />
+          <Text style={styles.backText}>{backLabel}</Text>
+        </TouchableOpacity>
+      )}
       {/* Palm trees flanking the title */}
       {showPalmTrees && (
         <>
@@ -61,6 +79,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 20,
     position: 'relative',
+  },
+  backWrap: {
+    position: 'absolute',
+    left: 0,
+    // Lower the back affordance so it aligns visually with the title baseline
+    top: Platform.OS === 'ios' ? 24 : 12,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 44,
+  },
+  backText: {
+    color: colors.electricCyan,
+    marginLeft: 4,
+    fontFamily: 'IBMPlexMono_700Bold',
+    textShadowColor: colors.electricCyan,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
   },
   palmLeft: {
     position: 'absolute',

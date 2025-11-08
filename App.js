@@ -33,6 +33,10 @@ import LoginScreen from './src/screens/LoginScreen'
 import OnboardingScreen from './src/screens/OnboardingScreen'
 import EmailConfirmationScreen from './src/screens/EmailConfirmationScreen'
 import TabNavigator from './src/navigation/TabNavigator'
+import WelcomeScreen from './src/screens/WelcomeScreen'
+import SignUpScreen from './src/screens/SignUpScreen'
+import SignInScreen from './src/screens/SignInScreen'
+import ResetPasswordScreen from './src/screens/ResetPasswordScreen'
 
 const RootStack = createNativeStackNavigator()
 
@@ -47,14 +51,16 @@ async function routeFromServerTruth() {
     tag('start');
     const sessRes = await supabase.auth.getSession();
     tag('getSession has=' + !!sessRes.data?.session + ' err=' + !!sessRes.error);
-    if (!sessRes.data?.session) { tag('-> Login'); resetTo('Login'); return; }
+    if (!sessRes.data?.session) { tag('-> Welcome'); resetTo('Welcome'); return; }
 
     // 2) Email confirmation — handle network errors correctly
+    // COMMENTED OUT FOR V1.2.0 - Email confirmation disabled in Supabase
+    /*
     const userRes = await supabase.auth.getUser();
     if (userRes.error) {
-      // Network or auth failure ≠ unconfirmed email. Fail safe to Login.
+      // Network or auth failure ≠ unconfirmed email. Fail safe to Welcome.
       console.warn('[RFST] getUser error:', userRes.error.message || userRes.error);
-      resetTo('Login');
+      resetTo('Welcome');
       return;
     }
     const user = userRes.data?.user;
@@ -65,6 +71,7 @@ async function routeFromServerTruth() {
       resetTo('EmailConfirmation');
       return;
     }
+    */
 
     // 3) Profile / onboarding — handle errors explicitly
     const profRes = await supabase
@@ -75,9 +82,9 @@ async function routeFromServerTruth() {
 
     if (profRes.error) {
       console.warn('[RFST] profiles fetch error:', profRes.error.message || profRes.error);
-      // Network error ≠ "needs onboarding". Fail safe to Login.
-      tag('prof error -> Login');
-      resetTo('Login');
+      // Network error ≠ "needs onboarding". Fail safe to Welcome.
+      tag('prof error -> Welcome');
+      resetTo('Welcome');
       return;
     }
 
@@ -89,7 +96,7 @@ async function routeFromServerTruth() {
     console.log('[RFST] catch', e?.message || e);
     try { await supabase.auth.stopAutoRefresh(); } catch {}
     try { await supabase.auth.signOut({ scope: 'local' }); } catch {}
-    resetTo('Login');
+    resetTo('Welcome');
   } finally {
     rfstInflight = false;
   }
@@ -129,8 +136,23 @@ export default function App() {
   // BOOT: kick once (may queue); subscribe to auth events
   useEffect(() => {
     routeFromServerTruth();
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt,_s)=>{ routeFromServerTruth(); });
+    const { data: sub } = supabase.auth.onAuthStateChange((event,_s)=>{
+      if (event === 'PASSWORD_RECOVERY') {
+        // Send user to Reset Password flow
+        resetTo('ResetPassword');
+        return;
+      }
+      routeFromServerTruth();
+    });
     return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // Install deep link handler for Supabase auth (password reset / OAuth)
+  useEffect(() => {
+    const uninstall = installAuthLinking();
+    return () => {
+      try { uninstall?.(); } catch {}
+    };
   }, []);
 
   // REMOVED for Build 9: Will re-add in Build 10 with expo-notifications
@@ -216,7 +238,7 @@ export default function App() {
             setTimeout(() => {
               const cur = navigationRef.getCurrentRoute()?.name;
               console.log('[SAFE] after 2000ms route =', cur);
-              if (cur === 'Loading') resetTo('Login');
+              if (cur === 'Loading') resetTo('Welcome');
             }, 2000);
           }}
         >
@@ -226,6 +248,10 @@ export default function App() {
           >
             {/* Declare all routes unconditionally to prevent navigation errors */}
             <RootStack.Screen name="Loading" component={LoadingScreen} />
+            <RootStack.Screen name="Welcome" component={WelcomeScreen} />
+            <RootStack.Screen name="SignUp" component={SignUpScreen} />
+            <RootStack.Screen name="SignIn" component={SignInScreen} />
+            <RootStack.Screen name="ResetPassword" component={ResetPasswordScreen} />
             <RootStack.Screen name="Login" component={LoginScreen} />
             <RootStack.Screen name="EmailConfirmation" component={EmailConfirmationScreen} />
             <RootStack.Screen name="Onboarding" component={OnboardingScreen} />

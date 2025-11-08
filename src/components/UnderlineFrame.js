@@ -4,7 +4,7 @@ import { tokens, palette } from '../theme/tokens';
 
 export default function UnderlineFrame({
   children,
-  underlineColor = palette.brightPink, // Soft Miami Vice pink
+  underlineColor = palette.electricCyan, // Electric cyan for structural consistency
   glowColor = null, // Defaults to underlineColor with opacity
   padding = 16,
   thickness = 2,

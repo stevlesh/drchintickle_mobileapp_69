@@ -13,12 +13,12 @@ export async function recoverFromStaleToken(supabase, resetTo) {
       console.warn('[AUTH] Stale refresh token; clearing local session');
       try { await supabase.auth.stopAutoRefresh(); } catch {}
       try { await supabase.auth.signOut({ scope: 'local' }); } catch {}
-      resetTo('Login');
+      resetTo('Welcome');
       return false;
     }
     // Any other error: fail safe to Login so UI isn't blocked
     try { await supabase.auth.stopAutoRefresh(); } catch {}
-    resetTo('Login');
+    resetTo('Welcome');
     return false;
   }
 }

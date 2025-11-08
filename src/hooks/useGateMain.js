@@ -15,16 +15,19 @@ export function useGateMain() {
           const { data: { session } } = await supabase.auth.getSession();
           
           if (!session) {
-            if (!cancelled) resetTo('Login');
+            if (!cancelled) resetTo('Welcome');
             return;
           }
 
+          // COMMENTED OUT FOR V1.2.0 - Email confirmation disabled (Nov 2025)
+          /*
           // Check email confirmation
           const { data: { user } } = await supabase.auth.getUser();
           if (!user?.email_confirmed_at && !cancelled) {
             resetTo('EmailConfirmation');
             return;
           }
+          */
 
           // Check onboarding completion
           const { data } = await supabase
@@ -38,8 +41,8 @@ export function useGateMain() {
           }
         } catch (error) {
           console.error('Error in useGateMain:', error);
-          // On error, redirect to login as a safe fallback
-          if (!cancelled) resetTo('Login');
+          // On error, redirect to Welcome as a safe fallback
+          if (!cancelled) resetTo('Welcome');
         }
       })();
       
