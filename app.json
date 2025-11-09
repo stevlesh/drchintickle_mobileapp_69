@@ -3,7 +3,7 @@
     "name": "Dr. ChinTickle",
     "slug": "dr-chintickle-v2",
     "scheme": "drchintickle",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./src/assets/icons/app-icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "11",
+      "buildNumber": "12",
       "bundleIdentifier": "com.drchintickle.app",
       "infoPlist": {
         "CFBundleURLTypes": [
