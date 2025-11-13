@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
   systemCard: {
     marginBottom: 32,
     paddingVertical: 20,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
   },
   iconRowHorizontal: {
     flexDirection: 'row',
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   subheadText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: 'IBMPlexMono_700Bold',
     color: colors.white,
     textAlign: 'center',
