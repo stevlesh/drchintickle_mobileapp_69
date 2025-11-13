@@ -19,6 +19,7 @@ import { Trophy, RainbowCloud } from 'phosphor-react-native';
 import WorkoutProgressTracker from '../components/WorkoutProgressTracker';
 import { getQuote, getDashboardQuote } from '../utils/quotes';
 import { generateWorkout } from '../utils/workoutApi';
+import { getQuoteFromServer } from '../lib/quotesClient';
 import QuoteChipMeasured from '../components/QuoteChipMeasured';
 import DeleteAccountModal from '../components/DeleteAccountModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -85,9 +86,17 @@ const DashboardScreen = ({ navigation }) => {
   // Initial data load
   useEffect(() => {
     fetchDashboardStats(); // Load everything on mount
-    const { quote, context } = getDashboardQuote();
-    setCurrentQuote(quote);
-    setQuoteContext(context);
+
+    // Fetch quote from server, randomly choosing preWorkout or workout
+    const fetchQuote = async () => {
+      const contexts = ['preWorkout', 'workout'];
+      const randomContext = contexts[Math.floor(Math.random() * contexts.length)];
+      const quote = await getQuoteFromServer(randomContext);
+      setCurrentQuote(quote);
+      setQuoteContext(randomContext);
+    };
+
+    fetchQuote();
   }, []);
 
   // Listen for workout completion with two-shot micro-retry
@@ -182,15 +191,20 @@ const DashboardScreen = ({ navigation }) => {
     }
   };
 
-  const handleWorkoutPress = () => {
+  const handleWorkoutPress = async () => {
     // Check if this is a max test day (workout 1)
     const isMaxTestDay = userStats.nextWorkout.workoutNum === 1;
-    
+
+    // Get cycle_num from server
+    const { data } = await supabase.rpc('get_dashboard_stats');
+    const cycleNum = data?.cycle_num || 1;
+
     // Navigate to WorkoutStack screen, then PreWorkout within it
     navigation.navigate('WorkoutStack', {
       screen: 'PreWorkout',
       params: {
         workoutNum: userStats.nextWorkout.workoutNum,
+        cycleNum: cycleNum,
         workoutType: isMaxTestDay ? 'MAX TEST' : userStats.nextWorkout.patternName,
         pattern: isMaxTestDay ? 'MAX TEST' : userStats.nextWorkout.patternName,
         setBreakdown: isMaxTestDay ? null : userStats.nextWorkout.setBreakdown,

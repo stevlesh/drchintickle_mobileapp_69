@@ -177,3 +177,99 @@ We need a reliable rest timer that:
 
 - Use deadline-based timing for background resilience; never rely solely on active `setInterval`.
 - Always include a one-shot guard around auto-advance paths that can coincide with user actions.
+
+# Planner — Auth UX v1.2.0
+
+Background and Motivation
+- Replace combined Login with Welcome → SignUp/SignIn to reduce friction and clarify intent.
+- Fix production bug: password reset deep links don’t complete (handler not installed; redirect URI mismatch; no reset UI).
+
+Key Challenges and Analysis
+- App.js currently routes unauthenticated users to `Login` and enforces email confirmation.
+- `installAuthLinking()` exists and is imported but never called; `src/auth/redirect.js` uses `drchintickle://auth-callback` (should be `drchintickle://auth/callback`).
+- No `ResetPasswordScreen` and no `PASSWORD_RECOVERY` special-case in `onAuthStateChange`.
+- `useGateMain` redirects to `Login` and may send users to `EmailConfirmation`.
+- `authRecovery.js` fallbacks send users to `Login`.
+- App.json has scheme and Android intent filter correctly configured for `drchintickle://auth/callback`.
+
+High-level Task Breakdown (with success criteria)
+1) Phase 0a — Deep linking fixes
+   - Actions: Call `installAuthLinking()` in `App.js`; change redirect native URI to `auth/callback`.
+   - Success: Clicking a reset link opens the app and triggers auth event; no runtime errors.
+
+2) Phase 0b — Routing updates
+   - Actions: Update `App.js`, `src/hooks/useGateMain.js`, `src/utils/authRecovery.js`, and `src/screens/OnboardingScreen.js` to use `Welcome` and comment out email-confirmation gates.
+   - Success: Unauthed → `Welcome`; no unexpected `Login`/`EmailConfirmation` redirects; 2s fallback goes to `Welcome`.
+
+3) Phase 0c — ResetPasswordScreen
+   - Actions: Create `src/screens/ResetPasswordScreen.js`; wire `onAuthStateChange` to navigate on `PASSWORD_RECOVERY`; add stack route.
+   - Success: Reset link → app → ResetPasswordScreen → `supabase.auth.updateUser({ password })` → routes via `resetTo('Loading')` into onboarding/main.
+
+4) Phases 1–3 — Build Welcome/SignUp/SignIn
+   - Actions: Implement UI + logic per plan (replace() for cross-screen toggles; session check on Welcome uses `resetTo('Loading')`).
+   - Success: Smooth navigation; distinct visual cues; signup/signin work without email confirmation.
+
+5) Phase 4 — Integration & QA
+   - Actions: Verify all `resetTo('Login')` changed appropriately; polish; error states; visual QA.
+   - Success: No regressions; no console errors; all acceptance checks pass.
+
+Project Status Board — Auth UX v1.2.0
+- [x] Phase 0a: Deep linking fixes
+- [x] Phase 0b: Routing updates
+- [x] Phase 0c: ResetPasswordScreen
+- [ ] Phases 1–3: Welcome/SignUp/SignIn
+- [ ] Phase 4: Integration & QA
+
+Current Status / Progress Tracking
+- Phase 0c complete:
+  - Added `src/screens/ResetPasswordScreen.js` with set-password flow.
+  - App.js: added `ResetPassword` route and `onAuthStateChange` PASSWORD_RECOVERY branch to `resetTo('ResetPassword')`.
+- Lint clean.
+- Ready for end-to-end password reset test: email → link opens app → ResetPassword screen → set new password → app routes via Loading to Main/Onboarding.
+
+Executor's Feedback or Assistance Requests
+- After you verify the reset flow, I’ll proceed to implement the full Welcome/SignUp/SignIn UIs (Phases 1–3).
+
+Lessons
+- Use `resetTo('ResetPassword')` in auth callback to guarantee navigation even before container ready (queues + flushes on ready).
+
+---
+
+# Background and Motivation — v1.3.0 Planning
+
+We want the next release to focus on visible value and momentum, not patching. Priorities: rest timer notifications, server-side quotes, basic analytics, and a “random leg day” feature. Password reset patch is explicitly deferred.
+
+# Key Challenges and Analysis — v1.3.0
+- Notifications need to fire at exact rest completion and handle backgrounding.
+- Quotes should be updateable server-side without releasing a new binary.
+- Analytics should be lightweight and private; Supabase-only is preferred initially.
+- Leg day scheduling must preserve streak logic and be deterministic across devices.
+
+# High-level Task Breakdown (with success criteria) — v1.3.0
+1) Rest notifications via `expo-notifications`
+   - Success: Notification fires at 0:00; tap returns to workout; no duplicates.
+2) Server-side quotes (Supabase + Edge Function)
+   - Success: Quotes load from server; offline fallback works; content updateable.
+3) Analytics MVP (Supabase tables + SQL views)
+   - Success: Views for signups_by_day, last_workout_by_user, daily_active_users are correct for a test user; exportable CSV.
+4) Leg day scheduling
+   - Success: One leg day per cycle is reproducible; streak counts; progression behavior matches chosen rule (see open question below).
+
+# Project Status Board — v1.3.0
+- [ ] Rest notifications implemented and tested on device
+- [ ] Server-side quotes shipped with fallback
+- [ ] Analytics MVP: events + SQL views
+- [ ] Leg day scheduling implemented with chosen rule
+
+# Current Status / Progress Tracking — v1.3.0
+- Planner prepared roadmap and acceptance criteria. Awaiting decision on leg day rule:
+  - Proposal A: Leg day extends the cycle by +1 day (next max test shifts by +1).
+  - Proposal B: Leg day replaces a pull-up day with no schedule shift.
+
+# Executor's Feedback or Assistance Requests — v1.3.0
+- Confirm preferred leg day rule (A or B) and timing (immediate after max test vs random day 1–6).
+- Approve Supabase-first analytics approach (no PostHog now).
+- Approve sequencing: notifications → quotes → analytics → leg day.
+
+# Lessons — v1.3.0
+- Start with Supabase-only analytics for speed and privacy; add BI/dashboard later if needed.

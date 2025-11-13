@@ -23,6 +23,7 @@ import { tokens } from '../theme/tokens'
 import { getQuoteWithAuthor, getQuote } from '../utils/quotes'
 import { supabase } from '../lib/supabase';
 import { bus } from '../lib/bus';
+import { getQuoteFromServer } from '../lib/quotesClient';
 // REMOVED for Build 9: Will re-add in Build 10 with expo-notifications
 // import { scheduleRestCompleteNotification, cancelRestNotification } from '../utils/restNotifications';
 import AnimatedBeachBallButtonV2 from '../components/AnimatedBeachBallButtonV2';
@@ -53,6 +54,7 @@ export default function WorkoutScreen({ navigation, route }) {
   // Accept params from navigation
   const {
     workoutNum = 2,
+    cycleNum = 1,
     totalWorkouts = 8,
     workoutType = 'PYRAMID',
     pattern = 'PYRAMID',
@@ -307,11 +309,15 @@ export default function WorkoutScreen({ navigation, route }) {
 
   // Get context-aware quotes based on workout state
   useEffect(() => {
-    let context = 'workout';
-    if (pageState === 'resting') context = 'workout'; // Use workout quotes for rest
-    if (pageState === 'summary') context = 'completion';
-    const quote = getQuote(context);
-    setCurrentQuote(quote);
+    const fetchQuote = async () => {
+      let context = 'workout';
+      if (pageState === 'resting') context = 'workout';
+      if (pageState === 'summary') context = 'completion';
+      const quote = await getQuoteFromServer(context);
+      setCurrentQuote(quote);
+    };
+
+    fetchQuote();
   }, [pageState]);
 
   // ============================================================================
@@ -617,7 +623,11 @@ export default function WorkoutScreen({ navigation, route }) {
           sets_data: JSON.stringify(repsCompleted),
           duration_minutes: durationMinutes,
           duration_sec: finalDurationSeconds,
-          session_key: sessionKeyRef.current
+          session_key: sessionKeyRef.current,
+          // NEW FIELDS - Plan tuple tracking
+          pattern: pattern,           // from route.params (pattern name like "Equal Sets", "Pyramid", etc.)
+          cycle_num: cycleNum,        // from route.params (passed from Dashboard)
+          workout_num: workoutNum     // from route.params
         });
 
         // Progress regular workout cycle

@@ -18,7 +18,7 @@ const OutlineNumber = ({ number, color = colors.electricCyan }) => {
   return (
     <Text style={{
       fontFamily: 'IBMPlexMono_700Bold',
-      fontSize: 48,
+      fontSize: 40,
       color: color,
       textShadowColor: color,
       textShadowOffset: { width: 0, height: 0 },
@@ -115,7 +115,7 @@ const OnboardingScreen = ({ navigation, route }) => {
         titleSize={42}
       />
       
-      <GlassCard borderColor={colors.hotPink} glowColor={colors.hotPink} style={styles.card}>
+      <GlassCard borderColor={colors.electricCyan} glowColor={colors.electricCyan} style={styles.card}>
         <Text style={[textStyles.subTitle, styles.cardTitle, { color: colors.neonYellow }]}>
           FITNESS APPS SUCK
         </Text>

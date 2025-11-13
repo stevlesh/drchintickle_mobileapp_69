@@ -44,3 +44,7 @@ eas build:list --platform all
 - ✅ Android package: "com.stevlesh.drchintickle"
 - ✅ iOS bundle identifier: "com.stevlesh.drchintickle"
 - ✅ Build profiles configured for both platforms
+
+## Troubleshooting
+
+- See [ANNOYING_BUGS_AND_FIXES.md](./ANNOYING_BUGS_AND_FIXES.md) for recurring fixes we've already hit.

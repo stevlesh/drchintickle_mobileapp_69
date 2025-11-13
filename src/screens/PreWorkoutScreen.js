@@ -20,7 +20,10 @@ import { bus } from '../lib/bus';
 
 const PreWorkoutScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
-  
+
+  // Accept cycleNum from route params
+  const { cycleNum = 1 } = route?.params || {};
+
   // State for workout data fetched from database
   const [workoutData, setWorkoutData] = useState({
     workoutNum: 1,
@@ -150,6 +153,7 @@ const PreWorkoutScreen = ({ route, navigation }) => {
     const timerStart = Date.now();
     navigation.navigate('Workout', {
       workoutNum: workoutData.workoutNum,
+      cycleNum: cycleNum,
       totalWorkouts: workoutData.totalWorkouts,
       workoutType: workoutData.workoutType,
       pattern: workoutData.pattern,
